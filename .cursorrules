@@ -1,0 +1,21 @@
+# Charge Nurse Assignment Tool — Project Rules
+
+## Co-coding mode
+- This is a collaborative project. Do NOT build features that haven't been explicitly requested.
+- Always ask clarifying questions before writing code.
+- Make one small change at a time and wait for feedback.
+
+## Tech stack
+- Plain HTML, CSS, and vanilla JavaScript only
+- No frameworks, no libraries unless explicitly approved
+- Single file structure to start (index.html)
+
+## App context
+- This is a charge nurse assignment tool for a trauma step-down unit
+- Nurses have a max of 4 patients (fewer for high acuity)
+- The app flags rule violations in real time as assignments are made
+- See README for full rule documentation
+
+## Code style
+- Write clean, readable, well-commented code
+- Explain what each section does in plain English comments
