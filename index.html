@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Charge Nurse Assignment Tool</title>
+
+    <!-- Google Font: Inter -->
+    <link
+      rel="preconnect"
+      href="https://fonts.googleapis.com"
+    />
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="app-header__content">
+        <h1 class="app-header__title">Charge Nurse Assignment Tool</h1>
+        <p class="app-header__subtitle">Shift Setup</p>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <section class="setup-card" aria-labelledby="setup-heading">
+        <h2 id="setup-heading" class="setup-card__heading">Shift details</h2>
+
+        <!-- Shift type -->
+        <div class="form-group">
+          <label class="form-label">Shift type</label>
+          <div class="segment-control" role="radiogroup" aria-label="Shift type">
+            <input
+              type="radio"
+              name="shiftType"
+              id="shift-day"
+              class="segment-control__input"
+              checked
+            />
+            <label for="shift-day" class="segment-control__option">
+              Day
+            </label>
+
+            <input
+              type="radio"
+              name="shiftType"
+              id="shift-night"
+              class="segment-control__input"
+            />
+            <label for="shift-night" class="segment-control__option">
+              Night
+            </label>
+          </div>
+        </div>
+
+        <!-- Number of nurses -->
+        <div class="form-group">
+          <label for="nurse-count" class="form-label">
+            Number of nurses scheduled
+          </label>
+          <input
+            type="number"
+            id="nurse-count"
+            name="nurseCount"
+            class="text-input"
+            min="1"
+            max="12"
+            inputmode="numeric"
+          />
+        </div>
+
+        <!-- Room numbers -->
+        <div class="form-group">
+          <p class="form-label" id="occupied-rooms-label">Select occupied rooms</p>
+          <div class="room-grid" role="group" aria-labelledby="occupied-rooms-label">
+            <input class="room-tile__input" type="checkbox" id="room-1" name="occupiedRooms" value="1" />
+            <label class="room-tile" for="room-1">1</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-2" name="occupiedRooms" value="2" />
+            <label class="room-tile" for="room-2">2</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-3" name="occupiedRooms" value="3" />
+            <label class="room-tile" for="room-3">3</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-5" name="occupiedRooms" value="5" />
+            <label class="room-tile" for="room-5">5</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-8" name="occupiedRooms" value="8" />
+            <label class="room-tile" for="room-8">8</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-9" name="occupiedRooms" value="9" />
+            <label class="room-tile" for="room-9">9</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-10" name="occupiedRooms" value="10" />
+            <label class="room-tile" for="room-10">10</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-11" name="occupiedRooms" value="11" />
+            <label class="room-tile" for="room-11">11</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-12" name="occupiedRooms" value="12" />
+            <label class="room-tile" for="room-12">12</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-15" name="occupiedRooms" value="15" />
+            <label class="room-tile" for="room-15">15</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-16" name="occupiedRooms" value="16" />
+            <label class="room-tile" for="room-16">16</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-17" name="occupiedRooms" value="17" />
+            <label class="room-tile" for="room-17">17</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-18" name="occupiedRooms" value="18" />
+            <label class="room-tile" for="room-18">18</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-22" name="occupiedRooms" value="22" />
+            <label class="room-tile" for="room-22">22</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-23" name="occupiedRooms" value="23" />
+            <label class="room-tile" for="room-23">23</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-24" name="occupiedRooms" value="24" />
+            <label class="room-tile" for="room-24">24</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-25" name="occupiedRooms" value="25" />
+            <label class="room-tile" for="room-25">25</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-26" name="occupiedRooms" value="26" />
+            <label class="room-tile" for="room-26">26</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-31" name="occupiedRooms" value="31" />
+            <label class="room-tile" for="room-31">31</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-32" name="occupiedRooms" value="32" />
+            <label class="room-tile" for="room-32">32</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-33" name="occupiedRooms" value="33" />
+            <label class="room-tile" for="room-33">33</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-34" name="occupiedRooms" value="34" />
+            <label class="room-tile" for="room-34">34</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-35" name="occupiedRooms" value="35" />
+            <label class="room-tile" for="room-35">35</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-38" name="occupiedRooms" value="38" />
+            <label class="room-tile" for="room-38">38</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-39" name="occupiedRooms" value="39" />
+            <label class="room-tile" for="room-39">39</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-40" name="occupiedRooms" value="40" />
+            <label class="room-tile" for="room-40">40</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-41" name="occupiedRooms" value="41" />
+            <label class="room-tile" for="room-41">41</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-43" name="occupiedRooms" value="43" />
+            <label class="room-tile" for="room-43">43</label>
+
+            <input class="room-tile__input" type="checkbox" id="room-44" name="occupiedRooms" value="44" />
+            <label class="room-tile" for="room-44">44</label>
+          </div>
+        </div>
+
+        <!-- Generate button -->
+        <div class="form-group form-group--footer">
+          <button type="button" class="button button--primary button--full-width">
+            Generate Assignment Board
+          </button>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
+
