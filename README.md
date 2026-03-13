@@ -49,5 +49,5 @@ Wound Care · Trach
 HTML · CSS · JavaScript
 
 ## Author
-Samuel Onewo, RN BSN, NSDS.
+Samuel Onewo, RN BSN, MSDS.
 Clinical Informatics Professional
