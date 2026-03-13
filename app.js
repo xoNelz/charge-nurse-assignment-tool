@@ -243,6 +243,7 @@
       let orCount = 0;
       let dischargeCount = 0;
       let woundCount = 0;
+      let isolationCount = 0;
 
       roomIds.forEach((room) => {
         const flags = patientFlags[room] || {};
@@ -258,6 +259,7 @@
         if (flags.goingToOr) orCount += 1;
         if (flags.expectedDischarge) dischargeCount += 1;
         if (flags.woundCare) woundCount += 1;
+        if (flags.isolation) isolationCount += 1;
       });
 
       const violations = [];
@@ -307,6 +309,12 @@
       // 8. Too many Trach patients on any shift
       if (trachCount >= 2) {
         violations.push("Too many trach patients - max 1 trach per nurse");
+      }
+      // 9. Isolation overload on a single nurse
+      if (isolationCount >= 3) {
+        violations.push(
+          "Too many isolation patients - max 2 isolation patients per nurse recommended",
+        );
       }
 
       // Night shift Trach advisory: soft warning only
