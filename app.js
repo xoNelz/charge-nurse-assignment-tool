@@ -236,6 +236,8 @@
       const totalPatients = roomIds.length;
 
       let hasTrachOrHighAcuity = false;
+      let hasTrach = false;
+      let trachCount = 0;
       let heparinCount = 0;
       let transfusionCount = 0;
       let orCount = 0;
@@ -247,6 +249,10 @@
         if (flags.trach || flags.highAcuity) {
           hasTrachOrHighAcuity = true;
         }
+        if (flags.trach) {
+          hasTrach = true;
+          trachCount += 1;
+        }
         if (flags.heparinDrip) heparinCount += 1;
         if (flags.transfusionRisk) transfusionCount += 1;
         if (flags.goingToOr) orCount += 1;
@@ -255,15 +261,22 @@
       });
 
       const violations = [];
+      const advisories = [];
 
       // 1. Patient count > 4
       if (totalPatients > 4) {
         violations.push(`More than 4 patients (${totalPatients}/4)`);
       }
 
-      // 2. Trach/High Acuity max 3
-      if (hasTrachOrHighAcuity && totalPatients > 3) {
-        violations.push("Trach / high acuity requires max 3 patients");
+      // 2. Trach/High Acuity max 3 on DAY shift
+      if (
+        currentShiftType === "Day" &&
+        hasTrachOrHighAcuity &&
+        totalPatients > 3
+      ) {
+        violations.push(
+          "Trach / high acuity requires max 3 patients on day shift",
+        );
       }
 
       // 3. Heparin conflict: 2 or more Heparin
@@ -291,6 +304,16 @@
         violations.push("3+ Wound Care patients");
       }
 
+      // 8. Too many Trach patients on any shift
+      if (trachCount >= 2) {
+        violations.push("Too many trach patients - max 1 trach per nurse");
+      }
+
+      // Night shift Trach advisory: soft warning only
+      if (currentShiftType === "Night" && hasTrach && totalPatients <= 4) {
+        advisories.push("Trach patient assigned - monitor workload");
+      }
+
       // Charge-specific rules based on shift type
       if (isChargeSlot && currentShiftType === "Day") {
         if (totalPatients > 0) {
@@ -310,7 +333,7 @@
 
       let warnings = slot.querySelector(".nurse-slot__warnings");
 
-      if (violations.length === 0) {
+      if (violations.length === 0 && advisories.length === 0) {
         if (warnings) {
           warnings.remove();
         }
@@ -322,16 +345,27 @@
       if (!warnings) {
         warnings = document.createElement("div");
         warnings.className = "nurse-slot__warnings";
-        warnings.style.color = "#b91c1c";
         warnings.style.fontSize = "0.8rem";
         warnings.style.padding = "0.3rem 0.7rem 0.2rem";
-        warnings.style.backgroundColor = "rgba(248, 250, 252, 0.9)";
         header.insertAdjacentElement("afterend", warnings);
       }
 
-      warnings.textContent = `Warnings: ${violations.join("; ")}`;
-      header.style.backgroundColor = "#b91c1c";
-      header.style.color = "#ffffff";
+      if (violations.length > 0) {
+        warnings.style.color = "#b91c1c";
+        warnings.style.backgroundColor = "rgba(248, 250, 252, 0.9)";
+        warnings.textContent = `Warnings: ${[...violations, ...advisories].join(
+          "; ",
+        )}`;
+        header.style.backgroundColor = "#b91c1c";
+        header.style.color = "#ffffff";
+      } else {
+        // Advisory-only state (e.g., Trach on night shift)
+        warnings.style.color = "#92400e";
+        warnings.style.backgroundColor = "#fffbeb";
+        warnings.textContent = advisories.join("; ");
+        header.style.backgroundColor = "";
+        header.style.color = "";
+      }
     });
   }
 
