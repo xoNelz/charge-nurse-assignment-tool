@@ -193,6 +193,7 @@
     `;
 
     setupDragAndDrop(board);
+    setupNurseNameEditing(board);
 
     const backBtn = document.getElementById("back-to-setup");
     if (backBtn) backBtn.addEventListener("click", showSetup, { once: true });
@@ -402,6 +403,68 @@
     });
 
     updateNurseSlotCounts();
+  }
+
+  function setupNurseNameEditing(boardRoot) {
+    const titles = boardRoot.querySelectorAll(".nurse-slot__title");
+    titles.forEach((titleEl) => {
+      titleEl.addEventListener("click", onNurseTitleClick);
+    });
+  }
+
+  function onNurseTitleClick(event) {
+    const titleEl = event.currentTarget;
+    const slot = titleEl.closest(".nurse-slot");
+    if (!slot) return;
+
+    // Avoid starting a new edit if one is already active in this slot
+    if (slot.querySelector(".nurse-slot__title-input")) {
+      return;
+    }
+
+    const currentName = titleEl.textContent || "";
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.value = currentName.trim();
+    input.className = "nurse-slot__title-input";
+    input.style.width = "100%";
+    input.style.border = "none";
+    input.style.background = "transparent";
+    input.style.color = "inherit";
+    input.style.font = "inherit";
+
+    let finished = false;
+
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      const newName = input.value.trim() || currentName.trim();
+      titleEl.textContent = newName;
+      titleEl.style.display = "";
+      input.remove();
+    };
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        finish();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        // Cancel and revert to original name
+        input.value = currentName.trim();
+        finish();
+      }
+    });
+
+    input.addEventListener("blur", () => {
+      finish();
+    });
+
+    titleEl.style.display = "none";
+    titleEl.parentElement.insertBefore(input, titleEl);
+    input.focus();
+    input.select();
   }
 
   function onCardDragStart(event) {
