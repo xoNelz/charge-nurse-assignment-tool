@@ -79,7 +79,7 @@
     return rooms
       .map(
         (room) => `
-              <div class="patient-card">
+              <div class="patient-card" data-room="${room}">
                 <span class="patient-card__room">${room}</span>
               </div>
             `,
@@ -87,19 +87,26 @@
       .join("");
   }
 
+  function getChargeSlotConfig(shiftType) {
+    if (shiftType === "Day") {
+      return { display: "0/0", maxPatients: 0 };
+    }
+
+    return { display: "0/1", maxPatients: 1 };
+  }
+
   function createNurseSlotsMarkup(nurseCount, shiftType) {
     if (!Number.isFinite(nurseCount) || nurseCount < 1) return "";
 
-    const isDay = shiftType === "Day";
-    const chargeMax = isDay ? "0/0" : "0/1";
+    const chargeConfig = getChargeSlotConfig(shiftType);
 
     let slots = `
               <div class="nurse-slot">
                 <div class="nurse-slot__header">
                   <span class="nurse-slot__title">Charge</span>
-                  <span class="nurse-slot__badge">${chargeMax}</span>
+                  <span class="nurse-slot__badge">${chargeConfig.display}</span>
                 </div>
-                <div class="nurse-slot__body"></div>
+                <div class="nurse-slot__body drop-zone" data-max="${chargeConfig.maxPatients}"></div>
               </div>
             `;
 
@@ -110,7 +117,7 @@
                   <span class="nurse-slot__title">Nurse ${i}</span>
                   <span class="nurse-slot__badge">0/4</span>
                 </div>
-                <div class="nurse-slot__body"></div>
+                <div class="nurse-slot__body drop-zone" data-max="4"></div>
               </div>
             `;
     }
@@ -144,7 +151,7 @@
           </button>
         </header>
         <div class="board-body">
-          <section class="board-section board-section--unassigned">
+          <section class="board-section board-section--unassigned drop-zone" data-zone="unassigned">
             <h3 class="board-section__title">Unassigned Patients</h3>
             <div class="unassigned-list">
               ${createUnassignedPatientsMarkup(rooms)}
@@ -166,8 +173,127 @@
       </div>
     `;
 
+    setupDragAndDrop(board);
+
     const backBtn = document.getElementById("back-to-setup");
     if (backBtn) backBtn.addEventListener("click", showSetup, { once: true });
+  }
+
+  let draggedCard = null;
+  let dragOriginParent = null;
+  let dragOriginNextSibling = null;
+  let dragHadValidDrop = false;
+
+  function updateNurseSlotCounts() {
+    const slots = document.querySelectorAll(".nurse-slot");
+    slots.forEach((slot) => {
+      const body = slot.querySelector(".nurse-slot__body");
+      const badge = slot.querySelector(".nurse-slot__badge");
+      if (!body || !badge) return;
+
+      const max = Number.parseInt(body.dataset.max || "0", 10);
+      const count = body.querySelectorAll(".patient-card").length;
+      const safeMax = Number.isFinite(max) ? max : 0;
+      badge.textContent = `${count}/${safeMax}`;
+    });
+  }
+
+  function setupDragAndDrop(boardRoot) {
+    const cards = boardRoot.querySelectorAll(".patient-card");
+    cards.forEach((card) => {
+      card.setAttribute("draggable", "true");
+      card.addEventListener("dragstart", onCardDragStart);
+      card.addEventListener("dragend", onCardDragEnd);
+    });
+
+    const dropZones = boardRoot.querySelectorAll(
+      ".board-section--unassigned, .nurse-slot__body",
+    );
+
+    dropZones.forEach((zone) => {
+      zone.addEventListener("dragover", onDropZoneDragOver);
+      zone.addEventListener("dragenter", onDropZoneDragEnter);
+      zone.addEventListener("dragleave", onDropZoneDragLeave);
+      zone.addEventListener("drop", onDropZoneDrop);
+    });
+
+    updateNurseSlotCounts();
+  }
+
+  function onCardDragStart(event) {
+    draggedCard = event.currentTarget;
+    dragOriginParent = draggedCard.parentElement;
+    dragOriginNextSibling = draggedCard.nextElementSibling;
+    dragHadValidDrop = false;
+    draggedCard.classList.add("patient-card--dragging");
+    draggedCard.style.opacity = "0.4";
+    event.dataTransfer.effectAllowed = "move";
+  }
+
+  function onCardDragEnd() {
+    if (!draggedCard) return;
+
+    if (!dragHadValidDrop && dragOriginParent) {
+      if (
+        dragOriginNextSibling &&
+        dragOriginNextSibling.parentElement === dragOriginParent
+      ) {
+        dragOriginParent.insertBefore(draggedCard, dragOriginNextSibling);
+      } else {
+        dragOriginParent.appendChild(draggedCard);
+      }
+    }
+
+    draggedCard.classList.remove("patient-card--dragging");
+    draggedCard.style.opacity = "";
+    draggedCard = null;
+    dragOriginParent = null;
+    dragOriginNextSibling = null;
+    dragHadValidDrop = false;
+
+    document
+      .querySelectorAll(".drop-zone--active")
+      .forEach((zone) => zone.classList.remove("drop-zone--active"));
+
+    updateNurseSlotCounts();
+  }
+
+  function onDropZoneDragOver(event) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  }
+
+  function onDropZoneDragEnter(event) {
+    event.preventDefault();
+    const zone = event.currentTarget;
+    zone.classList.add("drop-zone--active");
+  }
+
+  function onDropZoneDragLeave(event) {
+    const zone = event.currentTarget;
+    zone.classList.remove("drop-zone--active");
+  }
+
+  function onDropZoneDrop(event) {
+    event.preventDefault();
+    const zone = event.currentTarget;
+    zone.classList.remove("drop-zone--active");
+    if (!draggedCard) return;
+
+    dragHadValidDrop = true;
+
+    if (zone.classList.contains("board-section--unassigned")) {
+      const list = zone.querySelector(".unassigned-list");
+      if (list) {
+        list.appendChild(draggedCard);
+      } else {
+        zone.appendChild(draggedCard);
+      }
+    } else {
+      zone.appendChild(draggedCard);
+    }
+
+    updateNurseSlotCounts();
   }
 
   function onGenerateClick() {

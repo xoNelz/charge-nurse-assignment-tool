@@ -396,16 +396,22 @@ body {
 }
 
 .patient-card {
-  background-color: var(--color-white);
+  background-color: var(--color-chip-bg);
   border-radius: 8px;
   padding: 0.5rem 1rem;
   font-size: 0.95rem;
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18);
+  cursor: grab;
 }
 
 .patient-card__room {
   font-weight: 600;
   color: var(--color-navy);
+}
+
+.patient-card--dragging {
+  opacity: 0.7;
+  cursor: grabbing;
 }
 
 .nurse-grid {
@@ -449,6 +455,16 @@ body {
   min-height: 64px;
   padding: 0.7rem;
   background-color: #f8fafc;
+}
+
+.nurse-slot .patient-card {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.drop-zone--active {
+  outline: 2px dashed rgba(27, 58, 107, 0.5);
+  outline-offset: 2px;
 }
 
 .board-footer-row {
