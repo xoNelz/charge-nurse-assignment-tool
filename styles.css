@@ -414,6 +414,60 @@ body {
   cursor: grabbing;
 }
 
+.patient-card__flags {
+  margin-top: 0.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.18rem;
+}
+
+.patient-flag-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.patient-flag-dot--heparin {
+  background-color: #f97316;
+}
+
+.patient-flag-dot--transfusion {
+  background-color: #ef4444;
+}
+
+.patient-flag-dot--isolation {
+  background-color: #facc15;
+}
+
+.patient-flag-dot--or {
+  background-color: #0ea5e9;
+}
+
+.patient-flag-dot--discharge {
+  background-color: #22c55e;
+}
+
+.patient-flag-dot--acuity {
+  background-color: #6366f1;
+}
+
+.patient-flag-dot--lines {
+  background-color: #8b5cf6;
+}
+
+.patient-flag-dot--drains {
+  background-color: #ec4899;
+}
+
+.patient-flag-dot--wound {
+  background-color: #14b8a6;
+}
+
+.patient-flag-dot--trach {
+  background-color: #0f766e;
+}
+
 .nurse-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -474,6 +528,90 @@ body {
 
 .board-footer-row + .board-footer-row {
   margin-top: 0.35rem;
+}
+
+.patient-flag-modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.patient-flag-modal--open {
+  display: flex;
+}
+
+.patient-flag-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.45);
+}
+
+.patient-flag-modal__content {
+  position: relative;
+  background-color: var(--color-white);
+  border-radius: 12px;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.3);
+  padding: 1rem 1.1rem 1.1rem;
+  width: 100%;
+  max-width: 380px;
+  z-index: 1;
+}
+
+.patient-flag-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.patient-flag-modal__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-navy);
+}
+
+.patient-flag-modal__close {
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.patient-flag-modal__body {
+  font-size: 0.9rem;
+}
+
+.patient-flag-form__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem 0.75rem;
+}
+
+.patient-flag-form__item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.patient-flag-form__item input[type="checkbox"] {
+  accent-color: var(--color-navy);
+}
+
+.patient-flag-form__footer {
+  margin-top: 0.9rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.patient-flag-form__save {
+  padding-inline: 0.9rem;
 }
 
 @media (max-width: 640px) {

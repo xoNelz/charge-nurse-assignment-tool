@@ -4,6 +4,22 @@
     return day && day.checked ? "Day" : "Night";
   }
 
+  const PATIENT_FLAGS = [
+    { id: "heparinDrip", label: "Heparin Drip", colorClass: "patient-flag-dot--heparin" },
+    { id: "transfusionRisk", label: "Transfusion Risk", colorClass: "patient-flag-dot--transfusion" },
+    { id: "isolation", label: "Isolation", colorClass: "patient-flag-dot--isolation" },
+    { id: "goingToOr", label: "Going to OR", colorClass: "patient-flag-dot--or" },
+    { id: "expectedDischarge", label: "Expected Discharge", colorClass: "patient-flag-dot--discharge" },
+    { id: "highAcuity", label: "High Acuity", colorClass: "patient-flag-dot--acuity" },
+    { id: "lines", label: "Lines (PICC / Central)", colorClass: "patient-flag-dot--lines" },
+    { id: "drains", label: "Drains (JP / IR)", colorClass: "patient-flag-dot--drains" },
+    { id: "woundCare", label: "Wound Care", colorClass: "patient-flag-dot--wound" },
+    { id: "trach", label: "Trach", colorClass: "patient-flag-dot--trach" },
+  ];
+
+  const patientFlags = {};
+  let activeModalRoom = null;
+
   function getNurseCount() {
     const input = document.getElementById("nurse-count");
     const raw = input ? input.value.trim() : "";
@@ -183,6 +199,7 @@
   let dragOriginParent = null;
   let dragOriginNextSibling = null;
   let dragHadValidDrop = false;
+  let isDraggingCard = false;
 
   function updateNurseSlotCounts() {
     const slots = document.querySelectorAll(".nurse-slot");
@@ -204,6 +221,11 @@
       card.setAttribute("draggable", "true");
       card.addEventListener("dragstart", onCardDragStart);
       card.addEventListener("dragend", onCardDragEnd);
+      card.addEventListener("click", onPatientCardClick);
+      const room = card.dataset.room;
+      if (room) {
+        updateCardsForRoomFlags(room);
+      }
     });
 
     const dropZones = boardRoot.querySelectorAll(
@@ -225,6 +247,7 @@
     dragOriginParent = draggedCard.parentElement;
     dragOriginNextSibling = draggedCard.nextElementSibling;
     dragHadValidDrop = false;
+    isDraggingCard = true;
     draggedCard.classList.add("patient-card--dragging");
     draggedCard.style.opacity = "0.4";
     event.dataTransfer.effectAllowed = "move";
@@ -250,6 +273,7 @@
     dragOriginParent = null;
     dragOriginNextSibling = null;
     dragHadValidDrop = false;
+    isDraggingCard = false;
 
     document
       .querySelectorAll(".drop-zone--active")
@@ -296,6 +320,168 @@
     updateNurseSlotCounts();
   }
 
+  function ensureFlagModal() {
+    let modal = document.getElementById("patient-flag-modal");
+    if (modal) return modal;
+
+    modal = document.createElement("div");
+    modal.id = "patient-flag-modal";
+    modal.className = "patient-flag-modal";
+    modal.setAttribute("aria-hidden", "true");
+
+    const content = `
+      <div class="patient-flag-modal__backdrop" data-flag-modal-close></div>
+      <div class="patient-flag-modal__content" role="dialog" aria-modal="true" aria-labelledby="patient-flag-modal-title">
+        <header class="patient-flag-modal__header">
+          <h2 id="patient-flag-modal-title" class="patient-flag-modal__title"></h2>
+          <button type="button" class="patient-flag-modal__close" data-flag-modal-close aria-label="Close">
+            ×
+          </button>
+        </header>
+        <div class="patient-flag-modal__body">
+          <form id="patient-flag-form" class="patient-flag-form">
+            <div class="patient-flag-form__grid">
+              ${PATIENT_FLAGS.map(
+                (flag) => `
+                  <label class="patient-flag-form__item">
+                    <input
+                      type="checkbox"
+                      name="flag-${flag.id}"
+                      value="${flag.id}"
+                    />
+                    <span>${flag.label}</span>
+                  </label>
+                `,
+              ).join("")}
+            </div>
+            <div class="patient-flag-form__footer">
+              <button type="submit" class="button button--primary patient-flag-form__save">
+                Save
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+
+    modal.innerHTML = content;
+    document.body.appendChild(modal);
+
+    const closeElements = modal.querySelectorAll("[data-flag-modal-close]");
+    closeElements.forEach((el) => {
+      el.addEventListener("click", closePatientFlagModal);
+    });
+
+    const form = modal.querySelector("#patient-flag-form");
+    if (form) {
+      form.addEventListener("submit", onPatientFlagFormSubmit);
+    }
+
+    return modal;
+  }
+
+  function openPatientFlagModal(room) {
+    const modal = ensureFlagModal();
+    activeModalRoom = room;
+
+    const title = modal.querySelector("#patient-flag-modal-title");
+    if (title) {
+      title.textContent = `Room ${room}`;
+    }
+
+    const flagsForRoom = patientFlags[room] || {};
+    PATIENT_FLAGS.forEach((flag) => {
+      const input = modal.querySelector(
+        `input[name="flag-${flag.id}"]`,
+      );
+      if (input) {
+        input.checked = !!flagsForRoom[flag.id];
+      }
+    });
+
+    modal.classList.add("patient-flag-modal--open");
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  function closePatientFlagModal() {
+    const modal = document.getElementById("patient-flag-modal");
+    if (!modal) return;
+    modal.classList.remove("patient-flag-modal--open");
+    modal.setAttribute("aria-hidden", "true");
+    activeModalRoom = null;
+  }
+
+  function onPatientFlagFormSubmit(event) {
+    event.preventDefault();
+    if (!activeModalRoom) {
+      closePatientFlagModal();
+      return;
+    }
+
+    const modal = document.getElementById("patient-flag-modal");
+    if (!modal) return;
+
+    const form = modal.querySelector("#patient-flag-form");
+    if (!form) return;
+
+    const formData = new FormData(form);
+    const flagsForRoom = {};
+
+    PATIENT_FLAGS.forEach((flag) => {
+      if (formData.getAll(`flag-${flag.id}`).includes(flag.id)) {
+        flagsForRoom[flag.id] = true;
+      }
+    });
+
+    patientFlags[activeModalRoom] = flagsForRoom;
+
+    updateCardsForRoomFlags(activeModalRoom);
+    closePatientFlagModal();
+  }
+
+  function updateCardsForRoomFlags(room) {
+    const flagsForRoom = patientFlags[room] || {};
+    const hasAny = Object.keys(flagsForRoom).some((key) => flagsForRoom[key]);
+
+    const cards = document.querySelectorAll(
+      `.patient-card[data-room="${room}"]`,
+    );
+
+    cards.forEach((card) => {
+      let flagsContainer = card.querySelector(".patient-card__flags");
+
+      if (!hasAny) {
+        if (flagsContainer) {
+          flagsContainer.remove();
+        }
+        return;
+      }
+
+      if (!flagsContainer) {
+        flagsContainer = document.createElement("div");
+        flagsContainer.className = "patient-card__flags";
+        card.appendChild(flagsContainer);
+      }
+
+      flagsContainer.innerHTML = "";
+
+      PATIENT_FLAGS.forEach((flag) => {
+        if (!flagsForRoom[flag.id]) return;
+        const dot = document.createElement("span");
+        dot.className = `patient-flag-dot ${flag.colorClass}`;
+        flagsContainer.appendChild(dot);
+      });
+    });
+  }
+
+  function onPatientCardClick(event) {
+    if (isDraggingCard) return;
+    const card = event.currentTarget;
+    const room = card.dataset.room;
+    if (!room) return;
+    openPatientFlagModal(room);
+  }
+
   function onGenerateClick() {
     const rooms = getSelectedRooms();
     if (rooms.length === 0) {
@@ -330,6 +516,8 @@
       toggleRoomsBtn.addEventListener("click", onToggleRoomsClick);
       updateToggleRoomsLabel();
     }
+
+    ensureFlagModal();
   }
 
   if (document.readyState === "loading") {
