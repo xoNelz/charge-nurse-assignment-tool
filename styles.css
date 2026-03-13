@@ -273,6 +273,16 @@ body {
   justify-content: start;
 }
 
+#toggle-rooms {
+  display: inline-block;
+  margin: 0 0 0.4rem 0;
+}
+
+#toggle-rooms:hover,
+#toggle-rooms:focus-visible {
+  text-decoration: underline;
+}
+
 .room-tile__input {
   position: absolute;
   opacity: 0;
