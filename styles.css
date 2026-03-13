@@ -323,6 +323,143 @@ body {
   box-shadow: 0 0 0 2px rgba(27, 58, 107, 0.35);
 }
 
+.assignment-board {
+  max-width: 960px;
+  margin: 1.5rem auto 0;
+  background-color: var(--color-white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  overflow: hidden;
+}
+
+.board-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.5rem;
+  background-color: var(--color-navy);
+  color: var(--color-white);
+}
+
+.board-header__info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.board-header__shift {
+  font-weight: 600;
+}
+
+.board-header__meta {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.board-header__back {
+  font-size: 0.9rem;
+  padding-inline: 0.75rem;
+}
+
+.board-body {
+  padding: 1.25rem 1.5rem 1.5rem;
+  background-color: var(--color-bg);
+}
+
+.board-section {
+  margin-bottom: 1.25rem;
+}
+
+.board-section__title {
+  margin: 0 0 0.6rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-navy);
+}
+
+.board-section__empty {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.board-section--unassigned {
+  background-color: #fff8db;
+  border-radius: 10px;
+  padding: 0.8rem 0.9rem;
+}
+
+.unassigned-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.patient-card {
+  background-color: var(--color-white);
+  border-radius: 999px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.85rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
+}
+
+.patient-card__room {
+  font-weight: 500;
+  color: var(--color-navy);
+}
+
+.nurse-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.8rem;
+}
+
+.nurse-slot {
+  background-color: var(--color-white);
+  border-radius: 10px;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  display: flex;
+  flex-direction: column;
+}
+
+.nurse-slot__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 0.7rem;
+  background-color: var(--color-navy);
+  color: #ffffff;
+  border-radius: 10px 10px 0 0;
+}
+
+.nurse-slot__title {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.nurse-slot__badge {
+  font-size: 0.8rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background-color: rgba(15, 23, 42, 0.85);
+}
+
+.nurse-slot__body {
+  min-height: 64px;
+  padding: 0.7rem;
+  background-color: #f8fafc;
+}
+
+.board-footer-row {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.board-footer-row + .board-footer-row {
+  margin-top: 0.35rem;
+}
+
 @media (max-width: 640px) {
   .app-header {
     padding-inline: 1.1rem;

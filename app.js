@@ -71,6 +71,53 @@
     if (board) board.style.display = "none";
   }
 
+  function createUnassignedPatientsMarkup(rooms) {
+    if (!rooms || rooms.length === 0) {
+      return '<span class="board-section__empty">No unassigned patients.</span>';
+    }
+
+    return rooms
+      .map(
+        (room) => `
+              <div class="patient-card">
+                <span class="patient-card__room">${room}</span>
+              </div>
+            `,
+      )
+      .join("");
+  }
+
+  function createNurseSlotsMarkup(nurseCount, shiftType) {
+    if (!Number.isFinite(nurseCount) || nurseCount < 1) return "";
+
+    const isDay = shiftType === "Day";
+    const chargeMax = isDay ? "0/0" : "0/1";
+
+    let slots = `
+              <div class="nurse-slot">
+                <div class="nurse-slot__header">
+                  <span class="nurse-slot__title">Charge</span>
+                  <span class="nurse-slot__badge">${chargeMax}</span>
+                </div>
+                <div class="nurse-slot__body"></div>
+              </div>
+            `;
+
+    for (let i = 2; i <= nurseCount; i++) {
+      slots += `
+              <div class="nurse-slot">
+                <div class="nurse-slot__header">
+                  <span class="nurse-slot__title">Nurse ${i}</span>
+                  <span class="nurse-slot__badge">0/4</span>
+                </div>
+                <div class="nurse-slot__body"></div>
+              </div>
+            `;
+    }
+
+    return slots;
+  }
+
   function showBoard({ shiftType, nurseCount, rooms }) {
     const setup = document.querySelector(".app-main");
     const board = ensureBoardContainer();
@@ -78,13 +125,45 @@
     if (setup) setup.style.display = "none";
     board.style.display = "";
 
-    const roomsList = rooms.length ? rooms.join(", ") : "(none)";
+    const nurseLabel =
+      nurseCount === 1 ? "1 nurse" : `${nurseCount} nurses`;
 
     board.innerHTML = `
-      <div>Shift type: ${shiftType}</div>
-      <div>Number of nurses: ${nurseCount}</div>
-      <div>Selected rooms: ${roomsList}</div>
-      <button type="button" id="back-to-setup">Back to Setup</button>
+      <div class="assignment-board">
+        <header class="board-header">
+          <div class="board-header__info">
+            <span class="board-header__shift">${shiftType} shift</span>
+            <span class="board-header__meta">${nurseLabel}</span>
+          </div>
+          <button
+            type="button"
+            id="back-to-setup"
+            class="button button--secondary board-header__back"
+          >
+            ← Back to Setup
+          </button>
+        </header>
+        <div class="board-body">
+          <section class="board-section board-section--unassigned">
+            <h3 class="board-section__title">Unassigned Patients</h3>
+            <div class="unassigned-list">
+              ${createUnassignedPatientsMarkup(rooms)}
+            </div>
+          </section>
+
+          <section class="board-section board-section--nurses">
+            <h3 class="board-section__title">Nurse Assignments</h3>
+            <div class="nurse-grid">
+              ${createNurseSlotsMarkup(nurseCount, shiftType)}
+            </div>
+          </section>
+
+          <section class="board-section board-section--footer">
+            <div class="board-footer-row">CNA: (to be assigned)</div>
+            <div class="board-footer-row">1:1: (to be assigned)</div>
+          </section>
+        </div>
+      </div>
     `;
 
     const backBtn = document.getElementById("back-to-setup");
