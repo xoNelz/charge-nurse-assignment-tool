@@ -18,6 +18,7 @@
   ];
 
   const patientFlags = {};
+  let currentShiftType = null;
   let activeModalRoom = null;
 
   function getNurseCount() {
@@ -117,7 +118,7 @@
     const chargeConfig = getChargeSlotConfig(shiftType);
 
     let slots = `
-              <div class="nurse-slot">
+              <div class="nurse-slot" data-slot-type="charge">
                 <div class="nurse-slot__header">
                   <span class="nurse-slot__title">Charge</span>
                   <span class="nurse-slot__badge">${chargeConfig.display}</span>
@@ -144,6 +145,8 @@
   function showBoard({ shiftType, nurseCount, rooms }) {
     const setup = document.querySelector(".app-main");
     const board = ensureBoardContainer();
+
+    currentShiftType = shiftType;
 
     if (setup) setup.style.display = "none";
     board.style.display = "";
@@ -212,6 +215,123 @@
       const count = body.querySelectorAll(".patient-card").length;
       const safeMax = Number.isFinite(max) ? max : 0;
       badge.textContent = `${count}/${safeMax}`;
+    });
+  }
+
+  function evaluateNurseSlotRules() {
+    const slots = document.querySelectorAll(".nurse-slot");
+
+    slots.forEach((slot) => {
+      const body = slot.querySelector(".nurse-slot__body");
+      const header = slot.querySelector(".nurse-slot__header");
+      if (!body || !header) return;
+
+      const isChargeSlot = slot.dataset.slotType === "charge";
+
+      const cards = Array.from(
+        body.querySelectorAll(".patient-card[data-room]"),
+      );
+      const roomIds = cards.map((card) => card.dataset.room);
+
+      const totalPatients = roomIds.length;
+
+      let hasTrachOrHighAcuity = false;
+      let heparinCount = 0;
+      let transfusionCount = 0;
+      let orCount = 0;
+      let dischargeCount = 0;
+      let woundCount = 0;
+
+      roomIds.forEach((room) => {
+        const flags = patientFlags[room] || {};
+        if (flags.trach || flags.highAcuity) {
+          hasTrachOrHighAcuity = true;
+        }
+        if (flags.heparinDrip) heparinCount += 1;
+        if (flags.transfusionRisk) transfusionCount += 1;
+        if (flags.goingToOr) orCount += 1;
+        if (flags.expectedDischarge) dischargeCount += 1;
+        if (flags.woundCare) woundCount += 1;
+      });
+
+      const violations = [];
+
+      // 1. Patient count > 4
+      if (totalPatients > 4) {
+        violations.push(`More than 4 patients (${totalPatients}/4)`);
+      }
+
+      // 2. Trach/High Acuity max 3
+      if (hasTrachOrHighAcuity && totalPatients > 3) {
+        violations.push("Trach / high acuity requires max 3 patients");
+      }
+
+      // 3. Heparin conflict: 2 or more Heparin
+      if (heparinCount >= 2) {
+        violations.push("2+ Heparin Drip patients");
+      }
+
+      // 4. Heparin + Transfusion
+      if (heparinCount >= 1 && transfusionCount >= 1) {
+        violations.push("Heparin Drip with Transfusion Risk");
+      }
+
+      // 5. OR overload: 3+ Going to OR
+      if (orCount >= 3) {
+        violations.push("3+ patients Going to OR");
+      }
+
+      // 6. Discharge overload: 3+ Expected Discharge
+      if (dischargeCount >= 3) {
+        violations.push("3+ Expected Discharge patients");
+      }
+
+      // 7. Wound care overload: 3+ Wound Care
+      if (woundCount >= 3) {
+        violations.push("3+ Wound Care patients");
+      }
+
+      // Charge-specific rules based on shift type
+      if (isChargeSlot && currentShiftType === "Day") {
+        if (totalPatients > 0) {
+          violations.push(
+            "Charge nurse should not take patients on day shift",
+          );
+        }
+      }
+
+      if (isChargeSlot && currentShiftType === "Night") {
+        if (totalPatients > 1) {
+          violations.push(
+            "Charge nurse should only take 1 patient on night shift",
+          );
+        }
+      }
+
+      let warnings = slot.querySelector(".nurse-slot__warnings");
+
+      if (violations.length === 0) {
+        if (warnings) {
+          warnings.remove();
+        }
+        header.style.backgroundColor = "";
+        header.style.color = "";
+        return;
+      }
+
+      if (!warnings) {
+        warnings = document.createElement("div");
+        warnings.className = "nurse-slot__warnings";
+        warnings.style.color = "#b91c1c";
+        warnings.style.fontSize = "0.8rem";
+        warnings.style.padding = "0.3rem 0.7rem 0.2rem";
+        warnings.style.backgroundColor = "rgba(248, 250, 252, 0.9)";
+        header.insertAdjacentElement("afterend", warnings);
+      }
+
+      warnings.textContent = `Warnings: ${violations.join("; ")}`;
+      header.style.backgroundColor = "#b91c1c";
+      header.style.color = "#ffffff";
     });
   }
 
@@ -318,6 +438,7 @@
     }
 
     updateNurseSlotCounts();
+    evaluateNurseSlotRules();
   }
 
   function ensureFlagModal() {
@@ -436,6 +557,7 @@
     patientFlags[activeModalRoom] = flagsForRoom;
 
     updateCardsForRoomFlags(activeModalRoom);
+    evaluateNurseSlotRules();
     closePatientFlagModal();
   }
 
