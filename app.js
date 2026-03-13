@@ -18,6 +18,40 @@
     );
   }
 
+  function getAllRoomInputs() {
+    return Array.from(
+      document.querySelectorAll('input[name="occupiedRooms"]'),
+    );
+  }
+
+  function setRoomSelection(checked) {
+    const inputs = getAllRoomInputs();
+    inputs.forEach((input) => {
+      input.checked = checked;
+      const label = input.nextElementSibling;
+      if (label && label.classList && label.classList.contains("room-tile")) {
+        label.classList.toggle("room-tile--selected", checked);
+      }
+    });
+  }
+
+  function areAllRoomsSelected() {
+    const inputs = getAllRoomInputs();
+    return inputs.length > 0 && inputs.every((input) => input.checked);
+  }
+
+  function updateToggleRoomsLabel() {
+    const toggleBtn = document.getElementById("toggle-rooms");
+    if (!toggleBtn) return;
+    toggleBtn.textContent = areAllRoomsSelected() ? "Clear All" : "Select All";
+  }
+
+  function onToggleRoomsClick() {
+    const allSelected = areAllRoomsSelected();
+    setRoomSelection(!allSelected);
+    updateToggleRoomsLabel();
+  }
+
   function ensureBoardContainer() {
     let board = document.getElementById("board-container");
     if (board) return board;
@@ -82,8 +116,15 @@
 
   function init() {
     const btn = document.getElementById("generate-board");
-    if (!btn) return;
-    btn.addEventListener("click", onGenerateClick);
+    if (btn) {
+      btn.addEventListener("click", onGenerateClick);
+    }
+
+    const toggleRoomsBtn = document.getElementById("toggle-rooms");
+    if (toggleRoomsBtn) {
+      toggleRoomsBtn.addEventListener("click", onToggleRoomsClick);
+      updateToggleRoomsLabel();
+    }
   }
 
   if (document.readyState === "loading") {
