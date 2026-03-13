@@ -397,14 +397,14 @@ body {
 
 .patient-card {
   background-color: var(--color-white);
-  border-radius: 999px;
-  padding: 0.25rem 0.6rem;
-  font-size: 0.85rem;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.95rem;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18);
 }
 
 .patient-card__room {
-  font-weight: 500;
+  font-weight: 600;
   color: var(--color-navy);
 }
 
