@@ -635,6 +635,10 @@ body {
     padding-top: 2rem;
   }
 
+  .assignment-board {
+    overflow: visible;
+  }
+
   .setup-card {
     padding-inline: 1.25rem;
     border-radius: 12px;
@@ -650,7 +654,7 @@ body {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  #unassigned-section {
+  .board-section--unassigned {
     position: sticky;
     top: 0;
     z-index: 100;
