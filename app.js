@@ -211,6 +211,8 @@
   let touchOriginParent = null;
   let touchOriginNextSibling = null;
   let touchCurrentZone = null;
+  let touchCardWidth = 0;
+  let touchCardHeight = 0;
 
   function updateNurseSlotCounts() {
     const slots = document.querySelectorAll(".nurse-slot");
@@ -554,12 +556,26 @@
       } else {
         zone.appendChild(draggedCard);
       }
+      sortUnassignedPatients();
     } else {
       zone.appendChild(draggedCard);
     }
 
     updateNurseSlotCounts();
     evaluateNurseSlotRules();
+  }
+
+  function sortUnassignedPatients() {
+    const list = document.querySelector(".unassigned-list");
+    if (!list) return;
+    const cards = Array.from(list.querySelectorAll(".patient-card"));
+    cards
+      .sort((a, b) => {
+        const aRoom = Number.parseInt(a.dataset.room || "0", 10);
+        const bRoom = Number.parseInt(b.dataset.room || "0", 10);
+        return aRoom - bRoom;
+      })
+      .forEach((card) => list.appendChild(card));
   }
 
   function getDropZoneFromPoint(x, y) {
@@ -585,11 +601,11 @@
 
     // Visual clone that follows the finger
     const rect = card.getBoundingClientRect();
+    touchCardWidth = rect.width;
+    touchCardHeight = rect.height;
     const clone = card.cloneNode(true);
     clone.removeAttribute("id");
     clone.style.position = "fixed";
-    clone.style.top = `${rect.top + window.scrollY}px`;
-    clone.style.left = `${rect.left + window.scrollX}px`;
     clone.style.width = `${rect.width}px`;
     clone.style.pointerEvents = "none";
     clone.style.zIndex = "999";
@@ -608,12 +624,11 @@
 
   function moveTouchClone(x, y) {
     if (!touchDragClone) return;
-    const rect = touchDragClone.getBoundingClientRect();
-    const offsetX = rect.width / 2;
-    const offsetY = rect.height / 2;
-    touchDragClone.style.transform = `translate(${x - offsetX}px, ${
-      y - offsetY
-    }px) scale(1.1)`;
+    const offsetX = touchCardWidth / 2;
+    const offsetY = touchCardHeight / 2;
+    touchDragClone.style.left = `${x - offsetX}px`;
+    touchDragClone.style.top = `${y - offsetY}px`;
+    touchDragClone.style.transform = "scale(1.1)";
 
     const zone = getDropZoneFromPoint(x, y);
     if (zone !== touchCurrentZone) {
@@ -650,6 +665,7 @@
         } else {
           targetZone.appendChild(card);
         }
+        sortUnassignedPatients();
       } else {
         targetZone.appendChild(card);
       }
