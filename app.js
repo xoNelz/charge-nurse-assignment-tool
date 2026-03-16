@@ -205,6 +205,13 @@
   let dragHadValidDrop = false;
   let isDraggingCard = false;
 
+  // Touch drag state (mobile)
+  let touchDragCard = null;
+  let touchDragClone = null;
+  let touchOriginParent = null;
+  let touchOriginNextSibling = null;
+  let touchCurrentZone = null;
+
   function updateNurseSlotCounts() {
     const slots = document.querySelectorAll(".nurse-slot");
     slots.forEach((slot) => {
@@ -385,6 +392,15 @@
       card.addEventListener("dragstart", onCardDragStart);
       card.addEventListener("dragend", onCardDragEnd);
       card.addEventListener("click", onPatientCardClick);
+       // Touch support for mobile drag
+      card.addEventListener("touchstart", onCardTouchStart, {
+        passive: false,
+      });
+      card.addEventListener("touchmove", onCardTouchMove, {
+        passive: false,
+      });
+      card.addEventListener("touchend", onCardTouchEnd);
+      card.addEventListener("touchcancel", onCardTouchEnd);
       const room = card.dataset.room;
       if (room) {
         updateCardsForRoomFlags(room);
@@ -544,6 +560,122 @@
 
     updateNurseSlotCounts();
     evaluateNurseSlotRules();
+  }
+
+  function getDropZoneFromPoint(x, y) {
+    const el = document.elementFromPoint(x, y);
+    if (!el) return null;
+    return el.closest(".board-section--unassigned, .nurse-slot__body");
+  }
+
+  function clearTouchDropZoneHighlight() {
+    if (!touchCurrentZone) return;
+    touchCurrentZone.classList.remove("drop-zone--active");
+    touchCurrentZone = null;
+  }
+
+  function onCardTouchStart(event) {
+    if (event.touches.length !== 1) return;
+    const card = event.currentTarget;
+    // Prevent triggering click-to-open-modal immediately
+    isDraggingCard = true;
+    touchDragCard = card;
+    touchOriginParent = card.parentElement;
+    touchOriginNextSibling = card.nextElementSibling;
+
+    // Visual clone that follows the finger
+    const rect = card.getBoundingClientRect();
+    const clone = card.cloneNode(true);
+    clone.removeAttribute("id");
+    clone.style.position = "fixed";
+    clone.style.top = `${rect.top + window.scrollY}px`;
+    clone.style.left = `${rect.left + window.scrollX}px`;
+    clone.style.width = `${rect.width}px`;
+    clone.style.pointerEvents = "none";
+    clone.style.zIndex = "999";
+    clone.style.transform = "scale(1.1)";
+    clone.style.boxShadow = "0 10px 25px rgba(15, 23, 42, 0.3)";
+    document.body.appendChild(clone);
+
+    touchDragClone = clone;
+    card.style.opacity = "0.5";
+
+    const touch = event.touches[0];
+    moveTouchClone(touch.clientX, touch.clientY);
+
+    event.preventDefault();
+  }
+
+  function moveTouchClone(x, y) {
+    if (!touchDragClone) return;
+    const rect = touchDragClone.getBoundingClientRect();
+    const offsetX = rect.width / 2;
+    const offsetY = rect.height / 2;
+    touchDragClone.style.transform = `translate(${x - offsetX}px, ${
+      y - offsetY
+    }px) scale(1.1)`;
+
+    const zone = getDropZoneFromPoint(x, y);
+    if (zone !== touchCurrentZone) {
+      if (touchCurrentZone) {
+        touchCurrentZone.classList.remove("drop-zone--active");
+      }
+      touchCurrentZone = zone;
+      if (touchCurrentZone) {
+        touchCurrentZone.classList.add("drop-zone--active");
+      }
+    }
+  }
+
+  function onCardTouchMove(event) {
+    if (!touchDragCard || event.touches.length !== 1) return;
+    const touch = event.touches[0];
+    moveTouchClone(touch.clientX, touch.clientY);
+    event.preventDefault();
+  }
+
+  function onCardTouchEnd(event) {
+    if (!touchDragCard) return;
+
+    const card = touchDragCard;
+    const originParent = touchOriginParent;
+    const originNextSibling = touchOriginNextSibling;
+    const targetZone = touchCurrentZone;
+
+    if (targetZone) {
+      if (targetZone.classList.contains("board-section--unassigned")) {
+        const list = targetZone.querySelector(".unassigned-list");
+        if (list) {
+          list.appendChild(card);
+        } else {
+          targetZone.appendChild(card);
+        }
+      } else {
+        targetZone.appendChild(card);
+      }
+      updateNurseSlotCounts();
+      evaluateNurseSlotRules();
+    } else if (originParent) {
+      if (
+        originNextSibling &&
+        originNextSibling.parentElement === originParent
+      ) {
+        originParent.insertBefore(card, originNextSibling);
+      } else {
+        originParent.appendChild(card);
+      }
+    }
+
+    card.style.opacity = "";
+    if (touchDragClone) {
+      touchDragClone.remove();
+    }
+    touchDragCard = null;
+    touchDragClone = null;
+    touchOriginParent = null;
+    touchOriginNextSibling = null;
+    clearTouchDropZoneHighlight();
+    isDraggingCard = false;
   }
 
   function ensureFlagModal() {

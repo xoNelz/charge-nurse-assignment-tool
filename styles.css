@@ -622,6 +622,10 @@ body {
     padding-inline: 1.1rem;
   }
 
+  .app-header__title {
+    font-size: 1.2rem;
+  }
+
   .app-main {
     padding-inline: 1.1rem;
     padding-top: 2rem;
@@ -635,6 +639,10 @@ body {
   .room-input-row {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .room-grid {
+    grid-template-columns: repeat(4, 1fr);
   }
 
   .button--full-width {
