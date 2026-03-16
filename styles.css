@@ -17,6 +17,10 @@
   --transition-fast: 150ms ease-out;
 }
 
+* {
+  touch-action: manipulation;
+}
+
 *,
 *::before,
 *::after {
@@ -644,6 +648,15 @@ body {
 
   .room-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  #unassigned-section {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    max-height: 35vh;
+    overflow-y: auto;
+    background-color: #fefce8;
   }
 
   .button--full-width {
