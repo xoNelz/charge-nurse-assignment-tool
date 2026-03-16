@@ -215,6 +215,8 @@
   let touchCardHeight = 0;
   let touchStartX = null;
   let touchStartY = null;
+  let lastTapTime = 0;
+  let lastTapCard = null;
 
   function updateNurseSlotCounts() {
     const slots = document.querySelectorAll(".nurse-slot");
@@ -685,21 +687,19 @@
         originParent.appendChild(card);
       }
     }
-
-    // If there was effectively no movement and no drop zone,
-    // treat this as a tap to open the flag modal.
-    if (!targetZone && touchStartX !== null && touchStartY !== null) {
-      const touch = event.changedTouches && event.changedTouches[0];
-      if (touch) {
-        const dx = touch.clientX - touchStartX;
-        const dy = touch.clientY - touchStartY;
-        const distanceSq = dx * dx + dy * dy;
-        if (distanceSq === 0) {
-          const room = card.dataset.room;
-          if (room) {
-            openPatientFlagModal(room);
-          }
+    // Double-tap detection for opening modal (mobile only)
+    if (!targetZone) {
+      const now = Date.now();
+      if (lastTapCard === card && now - lastTapTime <= 300) {
+        const room = card.dataset.room;
+        if (room) {
+          openPatientFlagModal(room);
         }
+        lastTapTime = 0;
+        lastTapCard = null;
+      } else {
+        lastTapTime = now;
+        lastTapCard = card;
       }
     }
 
