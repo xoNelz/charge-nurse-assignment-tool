@@ -215,8 +215,9 @@
   let touchCardHeight = 0;
   let touchStartX = null;
   let touchStartY = null;
-  let lastTapTime = 0;
-  let lastTapCard = null;
+  let longPressTimeoutId = null;
+  let lastTouchX = null;
+  let lastTouchY = null;
 
   function updateNurseSlotCounts() {
     const slots = document.querySelectorAll(".nurse-slot");
@@ -623,7 +624,30 @@
     const touch = event.touches[0];
     touchStartX = touch.clientX;
     touchStartY = touch.clientY;
+    lastTouchX = touch.clientX;
+    lastTouchY = touch.clientY;
     moveTouchClone(touch.clientX, touch.clientY);
+
+    if (longPressTimeoutId) {
+      clearTimeout(longPressTimeoutId);
+      longPressTimeoutId = null;
+    }
+
+    longPressTimeoutId = setTimeout(() => {
+      if (!touchDragCard || touchStartX == null || touchStartY == null) {
+        return;
+      }
+      const dx = (lastTouchX ?? touchStartX) - touchStartX;
+      const dy = (lastTouchY ?? touchStartY) - touchStartY;
+      const distanceSq = dx * dx + dy * dy;
+      if (distanceSq <= 100) {
+        const room = touchDragCard.dataset.room;
+        if (room) {
+          openPatientFlagModal(room);
+        }
+      }
+      longPressTimeoutId = null;
+    }, 500);
 
     event.preventDefault();
   }
@@ -651,12 +675,30 @@
   function onCardTouchMove(event) {
     if (!touchDragCard || event.touches.length !== 1) return;
     const touch = event.touches[0];
+    lastTouchX = touch.clientX;
+    lastTouchY = touch.clientY;
+
+    if (touchStartX != null && touchStartY != null && longPressTimeoutId) {
+      const dx = touch.clientX - touchStartX;
+      const dy = touch.clientY - touchStartY;
+      const distanceSq = dx * dx + dy * dy;
+      if (distanceSq > 100) {
+        clearTimeout(longPressTimeoutId);
+        longPressTimeoutId = null;
+      }
+    }
+
     moveTouchClone(touch.clientX, touch.clientY);
     event.preventDefault();
   }
 
   function onCardTouchEnd(event) {
     if (!touchDragCard) return;
+
+    if (longPressTimeoutId) {
+      clearTimeout(longPressTimeoutId);
+      longPressTimeoutId = null;
+    }
 
     const card = touchDragCard;
     const originParent = touchOriginParent;
@@ -685,21 +727,6 @@
         originParent.insertBefore(card, originNextSibling);
       } else {
         originParent.appendChild(card);
-      }
-    }
-    // Double-tap detection for opening modal (mobile only)
-    if (!targetZone) {
-      const now = Date.now();
-      if (lastTapCard === card && now - lastTapTime <= 300) {
-        const room = card.dataset.room;
-        if (room) {
-          openPatientFlagModal(room);
-        }
-        lastTapTime = 0;
-        lastTapCard = null;
-      } else {
-        lastTapTime = now;
-        lastTapCard = card;
       }
     }
 
