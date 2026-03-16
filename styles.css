@@ -621,6 +621,127 @@ body {
   padding-inline: 0.9rem;
 }
 
+@media print {
+  body {
+    margin: 0;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-size: 13px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide all app chrome and interactive UI */
+  .app-header,
+  .setup-card,
+  .board-header,
+  .board-section--unassigned,
+  .nurse-slot__warnings,
+  .patient-flag-modal,
+  #toggle-rooms {
+    display: none !important;
+  }
+
+  /* Focus on the assignment list only */
+  .assignment-board {
+    max-width: 100%;
+    margin: 0;
+    box-shadow: none;
+    border: none;
+  }
+
+  .board-body {
+    padding: 0;
+    background-color: #ffffff;
+  }
+
+  /* Table layout: Nurse | Room 1 | Room 2 | Room 3 | Room 4 */
+  .board-section--nurses {
+    padding: 0;
+    margin-top: 0.75rem;
+  }
+
+  .board-section__title {
+    color: #000000 !important;
+  }
+
+  .nurse-grid {
+    display: table;
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .nurse-slot {
+    display: table-row;
+    box-shadow: none;
+    border: none;
+    border-radius: 0;
+  }
+
+  .nurse-slot__header,
+  .nurse-slot__body {
+    display: table-cell;
+    vertical-align: top;
+    padding: 4px 6px;
+    border: 1px solid #000000;
+    background: #ffffff;
+  }
+
+  .nurse-slot__header {
+    width: 150px;
+    font-weight: 600;
+    color: #000000;
+    border-right: none;
+    background: #ffffff;
+  }
+
+  .nurse-slot__badge {
+    display: none;
+  }
+
+  .nurse-slot__title {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .nurse-slot__body {
+    width: auto;
+    background: #ffffff;
+    white-space: nowrap;
+    letter-spacing: 0.05em;
+    word-spacing: 0.3em;
+  }
+
+  .nurse-slot__body .patient-card {
+    display: inline;
+    min-width: 0;
+    background: none;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: default;
+  }
+
+  .patient-card__room {
+    color: #000000 !important;
+  }
+
+  .patient-card__flags {
+    display: none;
+  }
+
+  .board-section--footer {
+    margin-top: 0.75rem;
+  }
+
+  .board-footer-row {
+    font-size: 13px;
+    color: #000000;
+  }
+}
+
 @media (max-width: 640px) {
   .app-header {
     padding-inline: 1.1rem;

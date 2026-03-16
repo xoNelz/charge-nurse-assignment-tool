@@ -161,13 +161,22 @@
             <span class="board-header__shift">${shiftType} shift</span>
             <span class="board-header__meta">${nurseLabel}</span>
           </div>
-          <button
-            type="button"
-            id="back-to-setup"
-            class="button button--secondary board-header__back"
-          >
-            ← Back to Setup
-          </button>
+          <div class="board-header__actions">
+            <button
+              type="button"
+              id="print-assignment"
+              class="button button--secondary board-header__print"
+            >
+              Print
+            </button>
+            <button
+              type="button"
+              id="back-to-setup"
+              class="button button--secondary board-header__back"
+            >
+              ← Back to Setup
+            </button>
+          </div>
         </header>
         <div class="board-body">
           <section class="board-section board-section--unassigned drop-zone" data-zone="unassigned">
@@ -197,6 +206,11 @@
 
     const backBtn = document.getElementById("back-to-setup");
     if (backBtn) backBtn.addEventListener("click", showSetup, { once: true });
+
+    const printBtn = document.getElementById("print-assignment");
+    if (printBtn) {
+      printBtn.addEventListener("click", onPrintClick);
+    }
   }
 
   let draggedCard = null;
@@ -231,6 +245,77 @@
       const safeMax = Number.isFinite(max) ? max : 0;
       badge.textContent = `${count}/${safeMax}`;
     });
+  }
+
+  function collectNurseAssignmentsForPrint() {
+    const rows = [];
+    const slots = document.querySelectorAll(".nurse-slot");
+
+    slots.forEach((slot) => {
+      const titleEl = slot.querySelector(".nurse-slot__title");
+      const nurseName = titleEl ? titleEl.textContent.trim() : "";
+
+      const cards = slot.querySelectorAll(
+        ".nurse-slot__body .patient-card[data-room]",
+      );
+
+      const roomNumbers = [];
+      const flagLabels = new Set();
+
+      cards.forEach((card) => {
+        const room = card.dataset.room;
+        if (room) {
+          roomNumbers.push(room);
+          const flags = patientFlags[room] || {};
+          PATIENT_FLAGS.forEach((flag) => {
+            if (flags[flag.id]) {
+              flagLabels.add(flag.label);
+            }
+          });
+        }
+      });
+
+      rows.push({
+        nurseName: nurseName || "—",
+        rooms: roomNumbers.sort((a, b) => Number(a) - Number(b)),
+        flags: Array.from(flagLabels),
+      });
+    });
+
+    return rows;
+  }
+
+  function onPrintClick() {
+    // Before printing, ensure rooms within each nurse body are comma-separated.
+    const bodies = document.querySelectorAll(".nurse-slot__body");
+    const originalHtml = [];
+
+    bodies.forEach((body) => {
+      originalHtml.push({ body, html: body.innerHTML });
+
+      const cards = Array.from(
+        body.querySelectorAll(".patient-card[data-room]"),
+      );
+      const rooms = cards
+        .map((card) => card.dataset.room)
+        .filter(Boolean);
+
+      if (rooms.length) {
+        body.textContent = rooms.join(", ");
+      } else {
+        body.textContent = "";
+      }
+    });
+
+    const restore = () => {
+      originalHtml.forEach(({ body, html }) => {
+        body.innerHTML = html;
+      });
+      window.removeEventListener("afterprint", restore);
+    };
+
+    window.addEventListener("afterprint", restore);
+    window.print();
   }
 
   function evaluateNurseSlotRules() {
