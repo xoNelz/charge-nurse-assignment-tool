@@ -213,6 +213,8 @@
   let touchCurrentZone = null;
   let touchCardWidth = 0;
   let touchCardHeight = 0;
+  let touchStartX = null;
+  let touchStartY = null;
 
   function updateNurseSlotCounts() {
     const slots = document.querySelectorAll(".nurse-slot");
@@ -617,6 +619,8 @@
     card.style.opacity = "0.5";
 
     const touch = event.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
     moveTouchClone(touch.clientX, touch.clientY);
 
     event.preventDefault();
@@ -679,6 +683,23 @@
         originParent.insertBefore(card, originNextSibling);
       } else {
         originParent.appendChild(card);
+      }
+    }
+
+    // If there was effectively no movement and no drop zone,
+    // treat this as a tap to open the flag modal.
+    if (!targetZone && touchStartX !== null && touchStartY !== null) {
+      const touch = event.changedTouches && event.changedTouches[0];
+      if (touch) {
+        const dx = touch.clientX - touchStartX;
+        const dy = touch.clientY - touchStartY;
+        const distanceSq = dx * dx + dy * dy;
+        if (distanceSq === 0) {
+          const room = card.dataset.room;
+          if (room) {
+            openPatientFlagModal(room);
+          }
+        }
       }
     }
 

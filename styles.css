@@ -634,6 +634,7 @@ body {
   .setup-card {
     padding-inline: 1.25rem;
     border-radius: 12px;
+    overflow: hidden;
   }
 
   .room-input-row {
@@ -642,7 +643,7 @@ body {
   }
 
   .room-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .button--full-width {
