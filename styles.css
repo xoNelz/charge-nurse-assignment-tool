@@ -654,6 +654,10 @@ body {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .board-section--nurses {
+    padding-inline: 0.75rem;
+  }
+
   .board-section--unassigned {
     position: sticky;
     top: 0;
