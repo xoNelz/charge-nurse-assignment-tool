@@ -15,6 +15,10 @@
     { id: "drains", label: "Drains (JP / IR)", colorClass: "patient-flag-dot--drains" },
     { id: "woundCare", label: "Wound Care", colorClass: "patient-flag-dot--wound" },
     { id: "trach", label: "Trach", colorClass: "patient-flag-dot--trach" },
+    { id: "aggressivePatient", label: "Aggressive Patient", colorClass: "patient-flag-dot--transfusion" },
+    { id: "oneToOneSafetyFallElopement", label: "1:1 Safety (Fall / Elopement)", colorClass: "patient-flag-dot--or" },
+    { id: "oneToOneSuicidePrecaution", label: "1:1 Suicide Precaution", colorClass: "patient-flag-dot--acuity" },
+    { id: "policePrisonCustody", label: "Police / Prison Custody", colorClass: "patient-flag-dot--isolation" },
   ];
 
   const patientFlags = {};
