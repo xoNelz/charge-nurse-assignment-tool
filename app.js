@@ -349,8 +349,34 @@
       let woundCount = 0;
       let isolationCount = 0;
       let aggressivePatientCount = 0;
+      const podMap = {
+        podA: new Set([1, 2, 3, 5]),
+        podB: new Set([8, 9, 10, 11, 12, 43, 44]),
+        podC: new Set([15, 16, 17, 18, 22]),
+        podD: new Set([35, 38, 39, 40, 41]),
+        podE: new Set([23, 24, 25, 26]),
+        podF: new Set([31, 32, 33, 34]),
+      };
+
+      const podsAssigned = new Set();
+      let hasTrachOutsidePodB = false;
+
+      const getPodForRoom = (roomNumber) => {
+        if (!Number.isFinite(roomNumber)) return null;
+        if (podMap.podA.has(roomNumber)) return "podA";
+        if (podMap.podB.has(roomNumber)) return "podB";
+        if (podMap.podC.has(roomNumber)) return "podC";
+        if (podMap.podD.has(roomNumber)) return "podD";
+        if (podMap.podE.has(roomNumber)) return "podE";
+        if (podMap.podF.has(roomNumber)) return "podF";
+        return null;
+      };
 
       roomIds.forEach((room) => {
+        const roomNumber = Number.parseInt(room, 10);
+        const pod = getPodForRoom(roomNumber);
+        if (pod) podsAssigned.add(pod);
+
         const flags = patientFlags[room] || {};
         if (flags.trach || flags.highAcuity) {
           hasTrachOrHighAcuity = true;
@@ -358,6 +384,9 @@
         if (flags.trach) {
           hasTrach = true;
           trachCount += 1;
+          if (pod !== "podB") {
+            hasTrachOutsidePodB = true;
+          }
         }
         if (flags.heparinDrip) heparinCount += 1;
         if (flags.transfusionRisk) transfusionCount += 1;
@@ -432,6 +461,20 @@
       if (aggressivePatientCount >= 2) {
         advisories.push(
           "Multiple aggressive patients assigned - review workload",
+        );
+      }
+
+      // Geographic spread advisory: soft warning only
+      if (podsAssigned.size > 2) {
+        advisories.push(
+          "Patients too spread out - consider clustering rooms",
+        );
+      }
+
+      // Trach placement advisory: soft warning only
+      if (hasTrachOutsidePodB) {
+        advisories.push(
+          "Trach patient should be near nursing station (rooms 8-12, 43-44)",
         );
       }
 
