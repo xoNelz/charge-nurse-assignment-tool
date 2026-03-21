@@ -348,6 +348,7 @@
       let dischargeCount = 0;
       let woundCount = 0;
       let isolationCount = 0;
+      let aggressivePatientCount = 0;
 
       roomIds.forEach((room) => {
         const flags = patientFlags[room] || {};
@@ -364,6 +365,7 @@
         if (flags.expectedDischarge) dischargeCount += 1;
         if (flags.woundCare) woundCount += 1;
         if (flags.isolation) isolationCount += 1;
+        if (flags.aggressivePatient) aggressivePatientCount += 1;
       });
 
       const violations = [];
@@ -424,6 +426,13 @@
       // Night shift Trach advisory: soft warning only
       if (currentShiftType === "Night" && hasTrach && totalPatients <= 4) {
         advisories.push("Trach patient assigned - monitor workload");
+      }
+
+      // Multiple aggressive patients advisory: soft warning only
+      if (aggressivePatientCount >= 2) {
+        advisories.push(
+          "Multiple aggressive patients assigned - review workload",
+        );
       }
 
       // Charge-specific rules based on shift type
