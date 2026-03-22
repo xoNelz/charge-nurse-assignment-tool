@@ -492,6 +492,10 @@ body {
   background-color: #ef4444;
 }
 
+.patient-flag-dot--aggressive {
+  background-color: #dc2626;
+}
+
 .patient-flag-dot--isolation {
   background-color: #facc15;
 }

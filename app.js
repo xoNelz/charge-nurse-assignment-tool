@@ -15,7 +15,7 @@
     { id: "drains", label: "Drains (JP / IR)", colorClass: "patient-flag-dot--drains" },
     { id: "woundCare", label: "Wound Care", colorClass: "patient-flag-dot--wound" },
     { id: "trach", label: "Trach", colorClass: "patient-flag-dot--trach" },
-    { id: "aggressivePatient", label: "Aggressive Patient", colorClass: "patient-flag-dot--transfusion" },
+    { id: "aggressivePatient", label: "Aggressive Patient", colorClass: "patient-flag-dot--aggressive" },
     { id: "oneToOneSafetyFallElopement", label: "1:1 Safety (Fall / Elopement)", colorClass: "patient-flag-dot--or" },
     { id: "oneToOneSuicidePrecaution", label: "1:1 Suicide Precaution", colorClass: "patient-flag-dot--acuity" },
     { id: "policePrisonCustody", label: "Police / Prison Custody", colorClass: "patient-flag-dot--isolation" },
@@ -769,32 +769,12 @@
       let woundCount = 0;
       let isolationCount = 0;
       let aggressivePatientCount = 0;
-      const podMap = {
-        podA: new Set([1, 2, 3, 5]),
-        podB: new Set([8, 9, 10, 11, 12, 43, 44]),
-        podC: new Set([15, 16, 17, 18, 22]),
-        podD: new Set([35, 38, 39, 40, 41]),
-        podE: new Set([23, 24, 25, 26]),
-        podF: new Set([31, 32, 33, 34]),
-      };
 
       const podsAssigned = new Set();
       let hasTrachOutsidePodB = false;
 
-      const getPodForRoom = (roomNumber) => {
-        if (!Number.isFinite(roomNumber)) return null;
-        if (podMap.podA.has(roomNumber)) return "podA";
-        if (podMap.podB.has(roomNumber)) return "podB";
-        if (podMap.podC.has(roomNumber)) return "podC";
-        if (podMap.podD.has(roomNumber)) return "podD";
-        if (podMap.podE.has(roomNumber)) return "podE";
-        if (podMap.podF.has(roomNumber)) return "podF";
-        return null;
-      };
-
       roomIds.forEach((room) => {
-        const roomNumber = Number.parseInt(room, 10);
-        const pod = getPodForRoom(roomNumber);
+        const pod = getPodIdForRoomStr(room);
         if (pod) podsAssigned.add(pod);
 
         const flags = patientFlags[room] || {};
