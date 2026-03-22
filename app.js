@@ -27,6 +27,389 @@
   let currentShiftType = null;
   let activeModalRoom = null;
 
+  const POD_ROOM_IDS = {
+    podA: [1, 2, 3, 5],
+    podB: [8, 9, 10, 11, 12, 43, 44],
+    podC: [15, 16, 17, 18, 22],
+    podD: [35, 38, 39, 40, 41],
+    podE: [23, 24, 25, 26],
+    podF: [31, 32, 33, 34],
+  };
+
+  const ROOM_TO_POD_ID = new Map();
+  Object.entries(POD_ROOM_IDS).forEach(([podId, rooms]) => {
+    rooms.forEach((n) => ROOM_TO_POD_ID.set(n, podId));
+  });
+
+  const POD_ORDER = ["podA", "podB", "podC", "podD", "podE", "podF"];
+
+  const POD_NEIGHBORS = {
+    podA: new Set(["podB"]),
+    podB: new Set(["podA", "podC", "podF"]),
+    podC: new Set(["podB", "podD", "podE"]),
+    podD: new Set(["podC", "podF"]),
+    podE: new Set(["podC", "podF"]),
+    podF: new Set(["podB", "podD", "podE"]),
+  };
+
+  function getPodIdForRoomStr(roomStr) {
+    const n = Number.parseInt(roomStr, 10);
+    return ROOM_TO_POD_ID.get(n) || null;
+  }
+
+  function getPodsInRoomIds(roomIds) {
+    const pods = new Set();
+    roomIds.forEach((r) => {
+      const p = getPodIdForRoomStr(r);
+      if (p) pods.add(p);
+    });
+    return pods;
+  }
+
+  function podsAreNeighbors(a, b) {
+    if (!a || !b) return false;
+    if (a === b) return true;
+    return Boolean(POD_NEIGHBORS[a]?.has(b));
+  }
+
+  /** Pods in set linked via POD_NEIGHBORS; multiple components ⇒ no single geographic cluster. */
+  function countInducedPodComponents(podSet) {
+    if (podSet.size < 3) return 1;
+    const visited = new Set();
+    let components = 0;
+    for (const start of podSet) {
+      if (visited.has(start)) continue;
+      components += 1;
+      const stack = [start];
+      visited.add(start);
+      while (stack.length) {
+        const u = stack.pop();
+        const neighbors = POD_NEIGHBORS[u];
+        if (!neighbors) continue;
+        neighbors.forEach((v) => {
+          if (!podSet.has(v) || visited.has(v)) return;
+          visited.add(v);
+          stack.push(v);
+        });
+      }
+    }
+    return components;
+  }
+
+  function slotHasRuleViolations(roomIds, isChargeSlot) {
+    let hasTrachOrHighAcuity = false;
+    let trachCount = 0;
+    let heparinCount = 0;
+    let transfusionCount = 0;
+    let orCount = 0;
+    let dischargeCount = 0;
+    let woundCount = 0;
+    let isolationCount = 0;
+
+    roomIds.forEach((room) => {
+      const f = patientFlags[room] || {};
+      if (f.trach || f.highAcuity) {
+        hasTrachOrHighAcuity = true;
+      }
+      if (f.trach) trachCount += 1;
+      if (f.heparinDrip) heparinCount += 1;
+      if (f.transfusionRisk) transfusionCount += 1;
+      if (f.goingToOr) orCount += 1;
+      if (f.expectedDischarge) dischargeCount += 1;
+      if (f.woundCare) woundCount += 1;
+      if (f.isolation) isolationCount += 1;
+    });
+
+    const totalPatients = roomIds.length;
+
+    if (totalPatients > 4) return true;
+    if (
+      currentShiftType === "Day" &&
+      hasTrachOrHighAcuity &&
+      totalPatients > 3
+    ) {
+      return true;
+    }
+    if (heparinCount >= 2) return true;
+    if (heparinCount >= 1 && transfusionCount >= 1) return true;
+    if (orCount >= 3) return true;
+    if (dischargeCount >= 3) return true;
+    if (woundCount >= 3) return true;
+    if (trachCount >= 2) return true;
+    if (isolationCount >= 3) return true;
+
+    if (isChargeSlot && currentShiftType === "Day" && totalPatients > 0) {
+      return true;
+    }
+    if (isChargeSlot && currentShiftType === "Night" && totalPatients > 1) {
+      return true;
+    }
+
+    return false;
+  }
+
+  function canAssignRoomToSlotBody(body, roomStr) {
+    const slot = body.closest(".nurse-slot");
+    if (!slot) return false;
+
+    const isChargeSlot = slot.dataset.slotType === "charge";
+    const max = Number.parseInt(body.dataset.max || "0", 10);
+    const currentIds = Array.from(
+      body.querySelectorAll(".patient-card[data-room]"),
+      (c) => c.dataset.room,
+    ).filter(Boolean);
+
+    if (currentIds.length >= max) return false;
+
+    const nextIds = [...currentIds, roomStr];
+    return !slotHasRuleViolations(nextIds, isChargeSlot);
+  }
+
+  function isReturningNurseSlot(slot) {
+    if (!slot || slot.dataset.slotType === "charge") return false;
+    const idx = slot.dataset.nurseIndex;
+    if (!idx) return false;
+    return nurseSlotReturning[idx] === true;
+  }
+
+  function getBodyRoomIds(body) {
+    return Array.from(
+      body.querySelectorAll(".patient-card[data-room]"),
+      (c) => c.dataset.room,
+    ).filter(Boolean);
+  }
+
+  function getBodyMaxPatients(body) {
+    return Number.parseInt(body.dataset.max || "0", 10);
+  }
+
+  function buildAutoAssignScoredCandidate(body, roomStr) {
+    const slot = body.closest(".nurse-slot");
+    if (!slot) return null;
+    const max = getBodyMaxPatients(body);
+    const currentIds = getBodyRoomIds(body);
+    if (currentIds.length >= max) return null;
+    if (!canAssignRoomToSlotBody(body, roomStr)) return null;
+
+    const roomPod = getPodIdForRoomStr(roomStr);
+    const existingPods = getPodsInRoomIds(currentIds);
+    const returning = isReturningNurseSlot(slot) ? 0 : 1;
+
+    let countInRoomPodAfter = 0;
+    if (roomPod) {
+      currentIds.forEach((r) => {
+        if (getPodIdForRoomStr(r) === roomPod) countInRoomPodAfter += 1;
+      });
+      countInRoomPodAfter += 1;
+    }
+    const thirdSamePodSoft = roomPod && countInRoomPodAfter === 3 ? 1 : 0;
+    const fourthSamePodSoft = roomPod && countInRoomPodAfter === 4 ? 2 : 0;
+
+    let neighborPodPenalty = 0;
+    if (roomPod && existingPods.size > 0) {
+      if (!existingPods.has(roomPod)) {
+        let touchesNeighbor = false;
+        for (const p of existingPods) {
+          if (podsAreNeighbors(p, roomPod)) {
+            touchesNeighbor = true;
+            break;
+          }
+        }
+        neighborPodPenalty = touchesNeighbor ? 0 : 1;
+      }
+    }
+
+    const count = currentIds.length;
+    const idxStr = slot.dataset.nurseIndex || "";
+    const idxNum = Number.parseInt(idxStr, 10);
+    const sortIdx = Number.isFinite(idxNum) ? idxNum : 0;
+
+    return {
+      body,
+      returning,
+      fourthSamePodSoft,
+      thirdSamePodSoft,
+      neighborPodPenalty,
+      count,
+      sortIdx,
+    };
+  }
+
+  function compareAutoAssignScored(a, b) {
+    if (a.returning !== b.returning) return a.returning - b.returning;
+    if (a.fourthSamePodSoft !== b.fourthSamePodSoft) {
+      return a.fourthSamePodSoft - b.fourthSamePodSoft;
+    }
+    if (a.thirdSamePodSoft !== b.thirdSamePodSoft) {
+      return a.thirdSamePodSoft - b.thirdSamePodSoft;
+    }
+    if (a.neighborPodPenalty !== b.neighborPodPenalty) {
+      return a.neighborPodPenalty - b.neighborPodPenalty;
+    }
+    if (a.count !== b.count) return a.count - b.count;
+    return a.sortIdx - b.sortIdx;
+  }
+
+  function runAutoAssign() {
+    const list = document.querySelector(".unassigned-list");
+    if (!list) return;
+
+    const queue = Array.from(
+      list.querySelectorAll(".patient-card[data-room]"),
+      (c) => ({ card: c, room: c.dataset.room }),
+    );
+
+    queue.sort((a, b) => {
+      const pa = getPodIdForRoomStr(a.room);
+      const pb = getPodIdForRoomStr(b.room);
+      const ia = pa ? POD_ORDER.indexOf(pa) : 99;
+      const ib = pb ? POD_ORDER.indexOf(pb) : 99;
+      if (ia !== ib) return ia - ib;
+      return Number.parseInt(a.room, 10) - Number.parseInt(b.room, 10);
+    });
+
+    const bodies = Array.from(
+      document.querySelectorAll(".nurse-slot__body.drop-zone"),
+    );
+    const fullCapBodies = bodies.filter((b) => getBodyMaxPatients(b) >= 4);
+    const n = fullCapBodies.length;
+
+    const phase1Targets = new Map();
+    if (n > 0) {
+      const total = queue.length;
+      if (total >= 3 * n) {
+        fullCapBodies.forEach((b) => phase1Targets.set(b, 3));
+      } else {
+        const base = Math.floor(total / n);
+        const rem = total % n;
+        fullCapBodies.forEach((b, i) => {
+          phase1Targets.set(b, i < rem ? base + 1 : base);
+        });
+      }
+    }
+
+    function phase1StillNeedsWork() {
+      if (n === 0) return false;
+      return fullCapBodies.some((b) => {
+        const c = getBodyRoomIds(b).length;
+        const t = phase1Targets.get(b) ?? 0;
+        return c < t;
+      });
+    }
+
+    function collectCandidates(roomStr, phase) {
+      return bodies
+        .map((body) => {
+          if (phase === 1) {
+            if (!fullCapBodies.includes(body)) return null;
+            const t = phase1Targets.get(body);
+            if (t === undefined) return null;
+            if (getBodyRoomIds(body).length >= t) return null;
+          }
+          if (phase === 2) {
+            const slot = body.closest(".nurse-slot");
+            if (slot && slot.dataset.slotType === "charge") {
+              if (currentShiftType === "Day") {
+                return null;
+              }
+              if (getBodyRoomIds(body).length >= 1) {
+                return null;
+              }
+            }
+          }
+          return buildAutoAssignScoredCandidate(body, roomStr);
+        })
+        .filter(Boolean);
+    }
+
+    while (queue.length > 0 && phase1StillNeedsWork()) {
+      const { card, room } = queue[0];
+      const candidates = collectCandidates(room, 1);
+      if (candidates.length === 0) break;
+      candidates.sort(compareAutoAssignScored);
+      candidates[0].body.appendChild(card);
+      queue.shift();
+    }
+
+    while (queue.length > 0) {
+      const { card, room } = queue[0];
+      const candidates = collectCandidates(room, 2);
+      if (candidates.length === 0) break;
+      candidates.sort(compareAutoAssignScored);
+      candidates[0].body.appendChild(card);
+      queue.shift();
+    }
+
+    sortUnassignedPatients();
+    updateNurseSlotCounts();
+    evaluateNurseSlotRules();
+  }
+
+  function clearAllNurseAssignments() {
+    const list = document.querySelector(".unassigned-list");
+    if (!list) return;
+
+    const bodies = document.querySelectorAll(".nurse-slot__body.drop-zone");
+    bodies.forEach((body) => {
+      const cards = body.querySelectorAll(".patient-card[data-room]");
+      cards.forEach((card) => {
+        list.appendChild(card);
+      });
+    });
+
+    sortUnassignedPatients();
+    updateNurseSlotCounts();
+    evaluateNurseSlotRules();
+  }
+
+  function onClearAssignmentClick() {
+    clearAllNurseAssignments();
+  }
+
+  function showAutoAssignToast() {
+    let el = document.getElementById("auto-assign-toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "auto-assign-toast";
+      el.setAttribute("role", "status");
+      el.style.cssText = [
+        "position:fixed",
+        "left:50%",
+        "bottom:1.25rem",
+        "transform:translateX(-50%)",
+        "z-index:2000",
+        "max-width:min(90vw,28rem)",
+        "padding:0.65rem 1rem",
+        "border-radius:10px",
+        "background:#ffffff",
+        "color:#0f172a",
+        "box-shadow:0 10px 30px rgba(15,23,42,0.18)",
+        "font-size:0.9rem",
+        "font-weight:600",
+        "text-align:center",
+        "pointer-events:none",
+        "opacity:0",
+        "transition:opacity 0.25s ease",
+      ].join(";");
+      document.body.appendChild(el);
+    }
+
+    el.textContent = "Auto-assign complete - review before finalizing";
+    el.style.opacity = "1";
+
+    if (el._hideTimer) {
+      clearTimeout(el._hideTimer);
+    }
+    el._hideTimer = setTimeout(() => {
+      el.style.opacity = "0";
+    }, 3200);
+  }
+
+  function onAutoAssignClick() {
+    runAutoAssign();
+    showAutoAssignToast();
+  }
+
   function getNurseCount() {
     const input = document.getElementById("nurse-count");
     const raw = input ? input.value.trim() : "";
@@ -205,6 +588,22 @@
             <div class="nurse-grid">
               ${createNurseSlotsMarkup(nurseCount, shiftType)}
             </div>
+            <div class="board-assignment-actions">
+              <button
+                type="button"
+                id="auto-assign-button"
+                class="button board-assignment-actions__auto"
+              >
+                Auto-Assign
+              </button>
+              <button
+                type="button"
+                id="clear-assignment-button"
+                class="button button--danger board-assignment-actions__clear"
+              >
+                Clear Assignment
+              </button>
+            </div>
           </section>
 
           <section class="board-section board-section--footer">
@@ -225,6 +624,16 @@
     const printBtn = document.getElementById("print-assignment");
     if (printBtn) {
       printBtn.addEventListener("click", onPrintClick);
+    }
+
+    const autoAssignBtn = document.getElementById("auto-assign-button");
+    if (autoAssignBtn) {
+      autoAssignBtn.addEventListener("click", onAutoAssignClick);
+    }
+
+    const clearAssignmentBtn = document.getElementById("clear-assignment-button");
+    if (clearAssignmentBtn) {
+      clearAssignmentBtn.addEventListener("click", onClearAssignmentClick);
     }
   }
 
@@ -475,8 +884,11 @@
         );
       }
 
-      // Geographic spread advisory: soft warning only
-      if (podsAssigned.size > 2) {
+      // Geographic spread advisory: 3+ pods forming 2+ disconnected clusters
+      if (
+        podsAssigned.size >= 3 &&
+        countInducedPodComponents(podsAssigned) >= 2
+      ) {
         advisories.push(
           "Patients too spread out - consider clustering rooms",
         );

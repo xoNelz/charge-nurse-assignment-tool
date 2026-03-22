@@ -225,6 +225,58 @@ body {
   width: 100%;
 }
 
+.button--danger {
+  background-color: #b91c1c;
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(185, 28, 28, 0.28);
+}
+
+.button--danger:hover {
+  background-color: #991b1b;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(185, 28, 28, 0.35);
+}
+
+.button--danger:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(185, 28, 28, 0.35);
+}
+
+.board-assignment-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.85rem;
+}
+
+.board-assignment-actions__auto {
+  padding: 0.55rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  background-color: var(--color-navy);
+  color: #ffffff;
+  border: 1px solid transparent;
+}
+
+.board-assignment-actions__auto:hover {
+  background-color: var(--color-navy-soft);
+  transform: translateY(-1px);
+}
+
+.board-assignment-actions__auto:active {
+  transform: translateY(0);
+}
+
+.board-assignment-actions__clear {
+  padding: 0.55rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
 .room-input-row {
   display: flex;
   gap: 0.6rem;
