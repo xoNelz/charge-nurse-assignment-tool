@@ -491,6 +491,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.45rem;
   padding: 0.55rem 0.7rem;
   background-color: var(--color-navy);
   color: #ffffff;
@@ -498,8 +499,44 @@ body {
 }
 
 .nurse-slot__title {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 0.9rem;
   font-weight: 600;
+}
+
+.nurse-slot__returning {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0.18rem 0.42rem;
+  border: none;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.78);
+  background-color: rgba(255, 255, 255, 0.12);
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.nurse-slot__returning:hover {
+  color: rgba(255, 255, 255, 0.95);
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.nurse-slot__returning--on {
+  color: #ffffff;
+  background-color: #22c55e;
+}
+
+.nurse-slot__returning--on:hover {
+  color: #ffffff;
+  background-color: #16a34a;
 }
 
 .nurse-slot__badge {
@@ -697,6 +734,10 @@ body {
 
   .nurse-slot__badge {
     display: none;
+  }
+
+  .nurse-slot__returning {
+    display: none !important;
   }
 
   .nurse-slot__title {

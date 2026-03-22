@@ -22,6 +22,8 @@
   ];
 
   const patientFlags = {};
+  /** Keyed by nurse slot index string (e.g. "2", "3"). Charge slot has no entry. */
+  const nurseSlotReturning = Object.create(null);
   let currentShiftType = null;
   let activeModalRoom = null;
 
@@ -133,9 +135,17 @@
 
     for (let i = 2; i <= nurseCount; i++) {
       slots += `
-              <div class="nurse-slot">
+              <div class="nurse-slot" data-nurse-index="${i}">
                 <div class="nurse-slot__header">
                   <span class="nurse-slot__title">Nurse ${i}</span>
+                  <button
+                    type="button"
+                    class="nurse-slot__returning"
+                    aria-pressed="false"
+                    data-nurse-index="${i}"
+                  >
+                    Returning
+                  </button>
                   <span class="nurse-slot__badge">0/4</span>
                 </div>
                 <div class="nurse-slot__body drop-zone" data-max="4"></div>
@@ -207,6 +217,7 @@
 
     setupDragAndDrop(board);
     setupNurseNameEditing(board);
+    setupReturningToggles(board);
 
     const backBtn = document.getElementById("back-to-setup");
     if (backBtn) backBtn.addEventListener("click", showSetup, { once: true });
@@ -629,6 +640,31 @@
     titleEl.parentElement.insertBefore(input, titleEl);
     input.focus();
     input.select();
+  }
+
+  function setupReturningToggles(boardRoot) {
+    Object.keys(nurseSlotReturning).forEach((k) => {
+      delete nurseSlotReturning[k];
+    });
+
+    boardRoot.querySelectorAll(".nurse-slot__returning").forEach((btn) => {
+      const idx = btn.dataset.nurseIndex;
+      if (!idx) return;
+
+      nurseSlotReturning[idx] = false;
+      btn.classList.remove("nurse-slot__returning--on");
+      btn.setAttribute("aria-pressed", "false");
+      btn.textContent = "Returning";
+
+      btn.addEventListener("click", (event) => {
+        event.stopPropagation();
+        btn.classList.toggle("nurse-slot__returning--on");
+        const on = btn.classList.contains("nurse-slot__returning--on");
+        nurseSlotReturning[idx] = on;
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+        btn.textContent = on ? "\u21A9 Returning" : "Returning";
+      });
+    });
   }
 
   function onCardDragStart(event) {
