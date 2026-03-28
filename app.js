@@ -16,10 +16,17 @@
     { id: "woundCare", label: "Wound Care", colorClass: "patient-flag-dot--wound" },
     { id: "trach", label: "Trach", colorClass: "patient-flag-dot--trach" },
     { id: "aggressivePatient", label: "Aggressive Patient", colorClass: "patient-flag-dot--aggressive" },
-    { id: "oneToOneSafetyFallElopement", label: "1:1 Safety (Fall / Elopement)", colorClass: "patient-flag-dot--or" },
-    { id: "oneToOneSuicidePrecaution", label: "1:1 Suicide Precaution", colorClass: "patient-flag-dot--acuity" },
+    { id: "oneToOne", label: "1:1 (Safety / Suicide Precaution)", colorClass: "patient-flag-dot--or" },
     { id: "policePrisonCustody", label: "Police / Prison Custody", colorClass: "patient-flag-dot--isolation" },
+    {
+      id: "other",
+      label: "Other",
+      colorClass: "patient-flag-dot--other",
+      otherField: true,
+    },
   ];
+
+  const PATIENT_FLAGS_GRID = PATIENT_FLAGS.filter((f) => !f.otherField);
 
   const patientFlags = {};
   /** Keyed by nurse slot index string (e.g. "2", "3"). Charge slot has no entry. */
@@ -105,6 +112,7 @@
     let dischargeCount = 0;
     let woundCount = 0;
     let isolationCount = 0;
+    let highAcuityCount = 0;
 
     roomIds.forEach((room) => {
       const f = patientFlags[room] || {};
@@ -112,6 +120,7 @@
         hasTrachOrHighAcuity = true;
       }
       if (f.trach) trachCount += 1;
+      if (f.highAcuity) highAcuityCount += 1;
       if (f.heparinDrip) heparinCount += 1;
       if (f.transfusionRisk) transfusionCount += 1;
       if (f.goingToOr) orCount += 1;
@@ -137,6 +146,8 @@
     if (woundCount >= 3) return true;
     if (trachCount >= 2) return true;
     if (isolationCount >= 3) return true;
+    if (highAcuityCount >= 2) return true;
+    if (trachCount >= 1 && highAcuityCount >= 1) return true;
 
     if (isChargeSlot && currentShiftType === "Day" && totalPatients > 0) {
       return true;
@@ -327,7 +338,9 @@
       const candidates = collectCandidates(room, 1);
       if (candidates.length === 0) break;
       candidates.sort(compareAutoAssignScored);
-      candidates[0].body.appendChild(card);
+      const destBody1 = candidates[0].body;
+      destBody1.appendChild(card);
+      sortNurseSlotPatients(destBody1);
       queue.shift();
     }
 
@@ -336,8 +349,49 @@
       const candidates = collectCandidates(room, 2);
       if (candidates.length === 0) break;
       candidates.sort(compareAutoAssignScored);
-      candidates[0].body.appendChild(card);
+      const destBody = candidates[0].body;
+      destBody.appendChild(card);
+      sortNurseSlotPatients(destBody);
       queue.shift();
+    }
+
+    function collectSweepCandidates(roomStr) {
+      return bodies
+        .map((body) => {
+          const slot = body.closest(".nurse-slot");
+          if (slot && slot.dataset.slotType === "charge") {
+            if (currentShiftType === "Day") return null;
+            if (getBodyRoomIds(body).length >= 1) return null;
+          }
+          const max = getBodyMaxPatients(body);
+          const currentIds = getBodyRoomIds(body);
+          if (currentIds.length >= max) return null;
+          if (!canAssignRoomToSlotBody(body, roomStr)) return null;
+          const idxStr = slot ? slot.dataset.nurseIndex || "" : "";
+          const idxNum = Number.parseInt(idxStr, 10);
+          const sortIdx = Number.isFinite(idxNum) ? idxNum : 0;
+          return { body, sortIdx };
+        })
+        .filter(Boolean);
+    }
+
+    let sweepProgress = true;
+    while (sweepProgress && queue.length > 0) {
+      sweepProgress = false;
+      for (let i = 0; i < queue.length; ) {
+        const { card, room } = queue[i];
+        const sweep = collectSweepCandidates(room);
+        if (sweep.length === 0) {
+          i += 1;
+          continue;
+        }
+        sweep.sort((a, b) => a.sortIdx - b.sortIdx);
+        const dest = sweep[0].body;
+        dest.appendChild(card);
+        sortNurseSlotPatients(dest);
+        queue.splice(i, 1);
+        sweepProgress = true;
+      }
     }
 
     sortUnassignedPatients();
@@ -691,11 +745,20 @@
         if (room) {
           roomNumbers.push(room);
           const flags = patientFlags[room] || {};
-          PATIENT_FLAGS.forEach((flag) => {
+          PATIENT_FLAGS_GRID.forEach((flag) => {
             if (flags[flag.id]) {
               flagLabels.add(flag.label);
             }
           });
+          const oc =
+            typeof flags.otherComment === "string"
+              ? flags.otherComment.trim()
+              : "";
+          if (flags.other && oc) {
+            flagLabels.add(`Other: ${oc}`);
+          } else if (flags.other) {
+            flagLabels.add("Other");
+          }
         }
       });
 
@@ -769,6 +832,7 @@
       let woundCount = 0;
       let isolationCount = 0;
       let aggressivePatientCount = 0;
+      let highAcuityCount = 0;
 
       const podsAssigned = new Set();
       let hasTrachOutsidePodB = false;
@@ -788,6 +852,7 @@
             hasTrachOutsidePodB = true;
           }
         }
+        if (flags.highAcuity) highAcuityCount += 1;
         if (flags.heparinDrip) heparinCount += 1;
         if (flags.transfusionRisk) transfusionCount += 1;
         if (flags.goingToOr) orCount += 1;
@@ -850,6 +915,13 @@
         violations.push(
           "Too many isolation patients - max 2 isolation patients per nurse recommended",
         );
+      }
+
+      if (highAcuityCount >= 2) {
+        violations.push("2+ High Acuity patients - review load");
+      }
+      if (trachCount >= 1 && highAcuityCount >= 1) {
+        violations.push("Trach + High Acuity combination - review load");
       }
 
       // Night shift Trach advisory: soft warning only
@@ -1133,10 +1205,27 @@
       sortUnassignedPatients();
     } else {
       zone.appendChild(draggedCard);
+      if (zone.classList.contains("nurse-slot__body")) {
+        sortNurseSlotPatients(zone);
+      }
     }
 
     updateNurseSlotCounts();
     evaluateNurseSlotRules();
+  }
+
+  function sortNurseSlotPatients(body) {
+    if (!body || !body.classList.contains("nurse-slot__body")) return;
+    const cards = Array.from(
+      body.querySelectorAll(".patient-card[data-room]"),
+    );
+    cards
+      .sort((a, b) => {
+        const aRoom = Number.parseInt(a.dataset.room || "0", 10);
+        const bRoom = Number.parseInt(b.dataset.room || "0", 10);
+        return aRoom - bRoom;
+      })
+      .forEach((card) => body.appendChild(card));
   }
 
   function sortUnassignedPatients() {
@@ -1285,6 +1374,9 @@
         sortUnassignedPatients();
       } else {
         targetZone.appendChild(card);
+        if (targetZone.classList.contains("nurse-slot__body")) {
+          sortNurseSlotPatients(targetZone);
+        }
       }
       updateNurseSlotCounts();
       evaluateNurseSlotRules();
@@ -1311,6 +1403,46 @@
     isDraggingCard = false;
   }
 
+  function getDisplayFlagsForRoom(room) {
+    const raw = patientFlags[room] || {};
+    const f = { ...raw };
+    if (f.oneToOneSafetyFallElopement || f.oneToOneSuicidePrecaution) {
+      f.oneToOne = true;
+    }
+    if (
+      typeof f.otherComment === "string" &&
+      f.otherComment.trim() &&
+      !f.other
+    ) {
+      f.other = true;
+    }
+    return f;
+  }
+
+  function roomFlagsHaveMarkers(flagsForRoom) {
+    if (!flagsForRoom || typeof flagsForRoom !== "object") return false;
+    const oc = flagsForRoom.otherComment;
+    if (typeof oc === "string" && oc.trim()) return true;
+    return Object.keys(flagsForRoom).some(
+      (key) => key !== "otherComment" && flagsForRoom[key] === true,
+    );
+  }
+
+  function wirePatientFlagOtherField(modal) {
+    if (modal.dataset.otherFieldWired === "1") return;
+    modal.dataset.otherFieldWired = "1";
+    const cb = modal.querySelector('input[name="flag-other"]');
+    const wrap = modal.querySelector(".patient-flag-form__other-comment-wrap");
+    const input = modal.querySelector(".patient-flag-form__other-input");
+    if (!cb || !wrap || !input) return;
+    cb.addEventListener("change", () => {
+      wrap.hidden = !cb.checked;
+      if (!cb.checked) {
+        input.value = "";
+      }
+    });
+  }
+
   function ensureFlagModal() {
     let modal = document.getElementById("patient-flag-modal");
     if (modal) return modal;
@@ -1332,7 +1464,7 @@
         <div class="patient-flag-modal__body">
           <form id="patient-flag-form" class="patient-flag-form">
             <div class="patient-flag-form__grid">
-              ${PATIENT_FLAGS.map(
+              ${PATIENT_FLAGS_GRID.map(
                 (flag) => `
                   <label class="patient-flag-form__item">
                     <input
@@ -1344,6 +1476,26 @@
                   </label>
                 `,
               ).join("")}
+              <div class="patient-flag-form__other-block">
+                <label class="patient-flag-form__item patient-flag-form__item--other">
+                  <input
+                    type="checkbox"
+                    name="flag-other"
+                    value="other"
+                  />
+                  <span>Other</span>
+                </label>
+                <div class="patient-flag-form__other-comment-wrap" hidden>
+                  <label class="patient-flag-form__other-comment-label" for="patient-flag-other-text">Comment</label>
+                  <input
+                    type="text"
+                    id="patient-flag-other-text"
+                    class="patient-flag-form__other-input"
+                    name="otherCommentField"
+                    autocomplete="off"
+                  />
+                </div>
+              </div>
             </div>
             <div class="patient-flag-form__footer">
               <button type="submit" class="button button--primary patient-flag-form__save">
@@ -1368,6 +1520,8 @@
       form.addEventListener("submit", onPatientFlagFormSubmit);
     }
 
+    wirePatientFlagOtherField(modal);
+
     return modal;
   }
 
@@ -1380,8 +1534,8 @@
       title.textContent = `Room ${room}`;
     }
 
-    const flagsForRoom = patientFlags[room] || {};
-    PATIENT_FLAGS.forEach((flag) => {
+    const flagsForRoom = getDisplayFlagsForRoom(room);
+    PATIENT_FLAGS_GRID.forEach((flag) => {
       const input = modal.querySelector(
         `input[name="flag-${flag.id}"]`,
       );
@@ -1389,6 +1543,24 @@
         input.checked = !!flagsForRoom[flag.id];
       }
     });
+
+    const otherCb = modal.querySelector('input[name="flag-other"]');
+    const otherWrap = modal.querySelector(
+      ".patient-flag-form__other-comment-wrap",
+    );
+    const otherInput = modal.querySelector(".patient-flag-form__other-input");
+    if (otherCb) {
+      otherCb.checked = !!flagsForRoom.other;
+    }
+    if (otherInput) {
+      otherInput.value =
+        typeof flagsForRoom.otherComment === "string"
+          ? flagsForRoom.otherComment
+          : "";
+    }
+    if (otherWrap) {
+      otherWrap.hidden = !otherCb || !otherCb.checked;
+    }
 
     modal.classList.add("patient-flag-modal--open");
     modal.setAttribute("aria-hidden", "false");
@@ -1418,11 +1590,24 @@
     const formData = new FormData(form);
     const flagsForRoom = {};
 
-    PATIENT_FLAGS.forEach((flag) => {
+    PATIENT_FLAGS_GRID.forEach((flag) => {
       if (formData.getAll(`flag-${flag.id}`).includes(flag.id)) {
         flagsForRoom[flag.id] = true;
       }
     });
+
+    const otherCb = form.querySelector('input[name="flag-other"]');
+    const otherInput = form.querySelector(".patient-flag-form__other-input");
+    if (otherCb && otherCb.checked) {
+      flagsForRoom.other = true;
+      const text = otherInput ? otherInput.value.trim() : "";
+      if (text) {
+        flagsForRoom.otherComment = text;
+      }
+    }
+
+    delete flagsForRoom.oneToOneSafetyFallElopement;
+    delete flagsForRoom.oneToOneSuicidePrecaution;
 
     patientFlags[activeModalRoom] = flagsForRoom;
 
@@ -1433,7 +1618,7 @@
 
   function updateCardsForRoomFlags(room) {
     const flagsForRoom = patientFlags[room] || {};
-    const hasAny = Object.keys(flagsForRoom).some((key) => flagsForRoom[key]);
+    const hasAny = roomFlagsHaveMarkers(flagsForRoom);
 
     const cards = document.querySelectorAll(
       `.patient-card[data-room="${room}"]`,
@@ -1446,6 +1631,8 @@
         if (flagsContainer) {
           flagsContainer.remove();
         }
+        const oldTip = card.querySelector(".patient-card__other-tooltip");
+        if (oldTip) oldTip.remove();
         return;
       }
 
@@ -1457,12 +1644,37 @@
 
       flagsContainer.innerHTML = "";
 
-      PATIENT_FLAGS.forEach((flag) => {
+      PATIENT_FLAGS_GRID.forEach((flag) => {
         if (!flagsForRoom[flag.id]) return;
         const dot = document.createElement("span");
         dot.className = `patient-flag-dot ${flag.colorClass}`;
         flagsContainer.appendChild(dot);
       });
+
+      if (flagsForRoom.other) {
+        const otherFlag = PATIENT_FLAGS.find((f) => f.id === "other");
+        if (otherFlag) {
+          const dot = document.createElement("span");
+          dot.className = `patient-flag-dot ${otherFlag.colorClass}`;
+          flagsContainer.appendChild(dot);
+        }
+      }
+
+      const oc =
+        typeof flagsForRoom.otherComment === "string"
+          ? flagsForRoom.otherComment.trim()
+          : "";
+      let tip = card.querySelector(".patient-card__other-tooltip");
+      if (oc) {
+        if (!tip) {
+          tip = document.createElement("div");
+          tip.className = "patient-card__other-tooltip";
+          card.appendChild(tip);
+        }
+        tip.textContent = oc;
+      } else if (tip) {
+        tip.remove();
+      }
     });
   }
 
