@@ -1428,6 +1428,19 @@
     );
   }
 
+  function syncPatientFlagOtherCommentUI(wrap, checkbox, input) {
+    const show = Boolean(checkbox && checkbox.checked);
+    if (wrap) {
+      wrap.classList.toggle(
+        "patient-flag-form__other-comment-wrap--visible",
+        show,
+      );
+    }
+    if (!show && input) {
+      input.value = "";
+    }
+  }
+
   function wirePatientFlagOtherField(modal) {
     if (modal.dataset.otherFieldWired === "1") return;
     modal.dataset.otherFieldWired = "1";
@@ -1436,10 +1449,7 @@
     const input = modal.querySelector(".patient-flag-form__other-input");
     if (!cb || !wrap || !input) return;
     cb.addEventListener("change", () => {
-      wrap.hidden = !cb.checked;
-      if (!cb.checked) {
-        input.value = "";
-      }
+      syncPatientFlagOtherCommentUI(wrap, cb, input);
     });
   }
 
@@ -1485,7 +1495,7 @@
                   />
                   <span>Other</span>
                 </label>
-                <div class="patient-flag-form__other-comment-wrap" hidden>
+                <div class="patient-flag-form__other-comment-wrap">
                   <label class="patient-flag-form__other-comment-label" for="patient-flag-other-text">Comment</label>
                   <input
                     type="text"
@@ -1554,13 +1564,12 @@
     }
     if (otherInput) {
       otherInput.value =
+        flagsForRoom.other &&
         typeof flagsForRoom.otherComment === "string"
           ? flagsForRoom.otherComment
           : "";
     }
-    if (otherWrap) {
-      otherWrap.hidden = !otherCb || !otherCb.checked;
-    }
+    syncPatientFlagOtherCommentUI(otherWrap, otherCb, otherInput);
 
     modal.classList.add("patient-flag-modal--open");
     modal.setAttribute("aria-hidden", "false");
