@@ -29,6 +29,10 @@
   const PATIENT_FLAGS_GRID = PATIENT_FLAGS.filter((f) => !f.otherField);
 
   const patientFlags = {};
+  /** Previous shift snapshot for future report continuity (e.g. auto-assign). */
+  let outgoingAssignment = [];
+  /** Board params waiting after setup until outgoing step completes. */
+  let pendingBoardParams = null;
   /** Keyed by nurse slot index string (e.g. "2", "3"). Charge slot has no entry. */
   const nurseSlotReturning = Object.create(null);
   let currentShiftType = null;
@@ -524,11 +528,118 @@
   }
 
   function showSetup() {
-    const setup = document.querySelector(".app-main");
+    const main = document.querySelector(".app-main");
     const board = document.getElementById("board-container");
+    const setupScreen = document.getElementById("setup-screen");
+    const outgoingScreen = document.getElementById("outgoing-screen");
 
-    if (setup) setup.style.display = "";
+    pendingBoardParams = null;
+
+    if (main) main.style.display = "";
+    if (setupScreen) setupScreen.style.display = "";
+    if (outgoingScreen) {
+      outgoingScreen.style.display = "none";
+      outgoingScreen.setAttribute("aria-hidden", "true");
+    }
     if (board) board.style.display = "none";
+  }
+
+  function parseOutgoingRoomsInput(str) {
+    if (!str || typeof str !== "string") return [];
+    return str
+      .split(/[,;\s]+/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((s) => Number.parseInt(s, 10))
+      .filter((n) => Number.isFinite(n));
+  }
+
+  function renderOutgoingTableRows(count) {
+    const tbody = document.getElementById("outgoing-table-body");
+    if (!tbody) return;
+
+    let safe = 0;
+    if (
+      typeof count === "number" &&
+      Number.isFinite(count) &&
+      count >= 1 &&
+      count <= 12
+    ) {
+      safe = Math.floor(count);
+    }
+
+    tbody.innerHTML = "";
+
+    for (let i = 1; i <= safe; i += 1) {
+      const label = i === 1 ? "Charge" : `Nurse ${i}`;
+      const tr = document.createElement("tr");
+      tr.className = "outgoing-table__row";
+      tr.innerHTML = `
+        <td class="outgoing-table__cell outgoing-table__cell--label">${label}</td>
+        <td class="outgoing-table__cell">
+          <input
+            type="text"
+            class="text-input outgoing-table__name"
+            placeholder="Nurse name (optional)"
+            autocomplete="off"
+          />
+        </td>
+        <td class="outgoing-table__cell">
+          <input
+            type="text"
+            class="text-input outgoing-table__rooms"
+            placeholder="e.g. 8, 9, 10, 11"
+            autocomplete="off"
+          />
+        </td>
+      `;
+      tbody.appendChild(tr);
+    }
+  }
+
+  function collectOutgoingAssignmentFromTable() {
+    const tbody = document.getElementById("outgoing-table-body");
+    if (!tbody) return [];
+
+    const rows = tbody.querySelectorAll(".outgoing-table__row");
+    const result = [];
+
+    rows.forEach((row) => {
+      const nameInput = row.querySelector(".outgoing-table__name");
+      const roomsInput = row.querySelector(".outgoing-table__rooms");
+      const name = nameInput ? nameInput.value.trim() : "";
+      const roomsStr = roomsInput ? roomsInput.value : "";
+      result.push({
+        name,
+        rooms: parseOutgoingRoomsInput(roomsStr),
+      });
+    });
+
+    return result;
+  }
+
+  function showOutgoingScreen() {
+    const main = document.querySelector(".app-main");
+    const setupScreen = document.getElementById("setup-screen");
+    const outgoingScreen = document.getElementById("outgoing-screen");
+    const countInput = document.getElementById("outgoing-nurse-count");
+
+    if (main) main.style.display = "";
+    if (setupScreen) setupScreen.style.display = "none";
+    if (outgoingScreen) {
+      outgoingScreen.style.display = "block";
+      outgoingScreen.setAttribute("aria-hidden", "false");
+    }
+
+    let nForRows = 0;
+    if (countInput && countInput.value.trim() !== "") {
+      const parsed = Number.parseInt(countInput.value.trim(), 10);
+      if (Number.isFinite(parsed) && parsed >= 1 && parsed <= 12) {
+        nForRows = parsed;
+      }
+    }
+
+    renderOutgoingTableRows(nForRows);
   }
 
   function createUnassignedPatientsMarkup(rooms) {
@@ -594,12 +705,19 @@
   }
 
   function showBoard({ shiftType, nurseCount, rooms }) {
-    const setup = document.querySelector(".app-main");
+    const main = document.querySelector(".app-main");
     const board = ensureBoardContainer();
+    const setupScreen = document.getElementById("setup-screen");
+    const outgoingScreen = document.getElementById("outgoing-screen");
 
     currentShiftType = shiftType;
 
-    if (setup) setup.style.display = "none";
+    if (main) main.style.display = "none";
+    if (setupScreen) setupScreen.style.display = "none";
+    if (outgoingScreen) {
+      outgoingScreen.style.display = "none";
+      outgoingScreen.setAttribute("aria-hidden", "true");
+    }
     board.style.display = "";
 
     const nurseLabel =
@@ -1711,17 +1829,78 @@
       return;
     }
 
-    showBoard({
+    outgoingAssignment = [];
+    pendingBoardParams = {
       shiftType: getShiftType(),
       nurseCount: value,
       rooms,
-    });
+    };
+
+    showOutgoingScreen();
+  }
+
+  function onOutgoingBackToSetup() {
+    pendingBoardParams = null;
+    showSetup();
+  }
+
+  function onOutgoingSkipToBoard() {
+    outgoingAssignment = [];
+    if (!pendingBoardParams) return;
+    const params = pendingBoardParams;
+    pendingBoardParams = null;
+    showBoard(params);
+  }
+
+  function onOutgoingContinueToBoard() {
+    outgoingAssignment = collectOutgoingAssignmentFromTable();
+    if (!pendingBoardParams) return;
+    const params = pendingBoardParams;
+    pendingBoardParams = null;
+    showBoard(params);
+  }
+
+  function onOutgoingNurseCountChange() {
+    const countInput = document.getElementById("outgoing-nurse-count");
+    if (!countInput) return;
+    const raw = countInput.value.trim();
+    if (raw === "") {
+      renderOutgoingTableRows(0);
+      return;
+    }
+    const n = Number.parseInt(raw, 10);
+    if (!Number.isFinite(n) || n < 1 || n > 12) {
+      renderOutgoingTableRows(0);
+      return;
+    }
+    renderOutgoingTableRows(n);
   }
 
   function init() {
     const btn = document.getElementById("generate-board");
     if (btn) {
       btn.addEventListener("click", onGenerateClick);
+    }
+
+    const outgoingBack = document.getElementById("outgoing-back-setup");
+    if (outgoingBack) {
+      outgoingBack.addEventListener("click", onOutgoingBackToSetup);
+    }
+
+    const outgoingSkip = document.getElementById("outgoing-skip");
+    if (outgoingSkip) {
+      outgoingSkip.addEventListener("click", onOutgoingSkipToBoard);
+    }
+
+    const outgoingContinue = document.getElementById("outgoing-continue");
+    if (outgoingContinue) {
+      outgoingContinue.addEventListener("click", onOutgoingContinueToBoard);
+    }
+
+    const outgoingCount = document.getElementById("outgoing-nurse-count");
+    if (outgoingCount) {
+      outgoingCount.addEventListener("input", onOutgoingNurseCountChange);
+      outgoingCount.addEventListener("change", onOutgoingNurseCountChange);
     }
 
     const toggleRoomsBtn = document.getElementById("toggle-rooms");

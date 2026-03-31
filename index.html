@@ -31,7 +31,11 @@
     </header>
 
     <main class="app-main">
-      <section class="setup-card" aria-labelledby="setup-heading">
+      <section
+        id="setup-screen"
+        class="setup-card"
+        aria-labelledby="setup-heading"
+      >
         <h2 id="setup-heading" class="setup-card__heading">Shift details</h2>
 
         <!-- Shift type -->
@@ -182,6 +186,81 @@
           >
             Generate Assignment Board
           </button>
+        </div>
+      </section>
+
+      <section
+        id="outgoing-screen"
+        class="outgoing-screen"
+        style="display: none"
+        aria-hidden="true"
+      >
+        <div class="outgoing-screen__card">
+          <header class="outgoing-screen__header">
+            <div class="outgoing-screen__header-row">
+              <h2 class="outgoing-screen__title">Outgoing Shift Assignment</h2>
+              <button
+                type="button"
+                id="outgoing-back-setup"
+                class="button button--secondary outgoing-screen__back"
+              >
+                ← Back to Setup
+              </button>
+            </div>
+          </header>
+          <p class="outgoing-screen__subtitle">
+            Optional — enter the previous shift&apos;s final room assignments
+            to improve report continuity
+          </p>
+
+          <div class="form-group">
+            <label class="form-label" for="outgoing-nurse-count">
+              How many nurses were on the outgoing shift?
+            </label>
+            <input
+              type="text"
+              id="outgoing-nurse-count"
+              class="text-input outgoing-screen__count-input"
+              inputmode="numeric"
+              placeholder="e.g. 8"
+              pattern="^(?:1[0-2]|[1-9])$"
+            />
+            <p class="outgoing-screen__count-error">
+              Please enter a number between 1 and 12
+            </p>
+          </div>
+
+          <div class="outgoing-screen__table-wrap">
+            <table class="outgoing-table">
+              <thead>
+                <tr>
+                  <th scope="col" class="outgoing-table__th outgoing-table__th--role">
+                    Role
+                  </th>
+                  <th scope="col" class="outgoing-table__th">Name</th>
+                  <th scope="col" class="outgoing-table__th">Rooms</th>
+                </tr>
+              </thead>
+              <tbody id="outgoing-table-body"></tbody>
+            </table>
+          </div>
+
+          <div class="outgoing-screen__actions">
+            <button
+              type="button"
+              id="outgoing-skip"
+              class="button button--secondary outgoing-screen__btn-skip"
+            >
+              Skip → Go to Board
+            </button>
+            <button
+              type="button"
+              id="outgoing-continue"
+              class="button button--primary outgoing-screen__btn-continue"
+            >
+              Continue →
+            </button>
+          </div>
         </div>
       </section>
     </main>
