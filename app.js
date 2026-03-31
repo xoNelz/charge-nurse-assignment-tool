@@ -198,13 +198,58 @@
     return Number.parseInt(body.dataset.max || "0", 10);
   }
 
-  function buildAutoAssignScoredCandidate(body, roomStr) {
+  function buildOutgoingRoomToSourceIndicesMap() {
+    if (!outgoingAssignment || outgoingAssignment.length === 0) {
+      return null;
+    }
+    const roomToIndices = new Map();
+    let hasRoomData = false;
+    outgoingAssignment.forEach((entry, idx) => {
+      if (!entry.rooms || entry.rooms.length === 0) return;
+      hasRoomData = true;
+      entry.rooms.forEach((n) => {
+        const key = String(n);
+        if (!roomToIndices.has(key)) roomToIndices.set(key, new Set());
+        roomToIndices.get(key).add(idx);
+      });
+    });
+    if (!hasRoomData) return null;
+    return roomToIndices;
+  }
+
+  function countDistinctOutgoingReportSources(roomIds, roomToIndices) {
+    const indices = new Set();
+    roomIds.forEach((r) => {
+      const set = roomToIndices.get(String(r));
+      if (set) set.forEach((i) => indices.add(i));
+    });
+    return indices.size;
+  }
+
+  function reportContinuityPenaltyScore(sourceCount) {
+    if (sourceCount <= 1) return 0;
+    if (sourceCount === 2) return 1;
+    if (sourceCount === 3) return 2;
+    return 4;
+  }
+
+  function buildAutoAssignScoredCandidate(body, roomStr, reportRoomMap) {
     const slot = body.closest(".nurse-slot");
     if (!slot) return null;
     const max = getBodyMaxPatients(body);
     const currentIds = getBodyRoomIds(body);
     if (currentIds.length >= max) return null;
     if (!canAssignRoomToSlotBody(body, roomStr)) return null;
+
+    let reportSourceScore = 0;
+    if (reportRoomMap) {
+      const nextIds = [...currentIds, roomStr];
+      const srcCount = countDistinctOutgoingReportSources(
+        nextIds,
+        reportRoomMap,
+      );
+      reportSourceScore = reportContinuityPenaltyScore(srcCount);
+    }
 
     const roomPod = getPodIdForRoomStr(roomStr);
     const existingPods = getPodsInRoomIds(currentIds);
@@ -241,6 +286,7 @@
 
     return {
       body,
+      reportSourceScore,
       returning,
       fourthSamePodSoft,
       thirdSamePodSoft,
@@ -251,6 +297,9 @@
   }
 
   function compareAutoAssignScored(a, b) {
+    const ra = a.reportSourceScore ?? 0;
+    const rb = b.reportSourceScore ?? 0;
+    if (ra !== rb) return ra - rb;
     if (a.returning !== b.returning) return a.returning - b.returning;
     if (a.fourthSamePodSoft !== b.fourthSamePodSoft) {
       return a.fourthSamePodSoft - b.fourthSamePodSoft;
@@ -286,6 +335,7 @@
     const bodies = Array.from(
       document.querySelectorAll(".nurse-slot__body.drop-zone"),
     );
+    const reportRoomMap = buildOutgoingRoomToSourceIndicesMap();
     const fullCapBodies = bodies.filter((b) => getBodyMaxPatients(b) >= 4);
     const n = fullCapBodies.length;
 
@@ -332,7 +382,7 @@
               }
             }
           }
-          return buildAutoAssignScoredCandidate(body, roomStr);
+          return buildAutoAssignScoredCandidate(body, roomStr, reportRoomMap);
         })
         .filter(Boolean);
     }
@@ -925,6 +975,7 @@
 
   function evaluateNurseSlotRules() {
     const slots = document.querySelectorAll(".nurse-slot");
+    const reportRoomMapForEval = buildOutgoingRoomToSourceIndicesMap();
 
     slots.forEach((slot) => {
       const body = slot.querySelector(".nurse-slot__body");
@@ -1069,6 +1120,18 @@
         advisories.push(
           "Trach patient should be near nursing station (rooms 8-12, 43-44)",
         );
+      }
+
+      if (reportRoomMapForEval && roomIds.length > 0) {
+        const reportSrcCount = countDistinctOutgoingReportSources(
+          roomIds,
+          reportRoomMapForEval,
+        );
+        if (reportSrcCount >= 4) {
+          advisories.push(
+            "Getting report from 4+ nurses - consider redistributing",
+          );
+        }
       }
 
       // Charge-specific rules based on shift type
@@ -1853,8 +1916,33 @@
   }
 
   function onOutgoingContinueToBoard() {
-    outgoingAssignment = collectOutgoingAssignmentFromTable();
     if (!pendingBoardParams) return;
+
+    const draft = collectOutgoingAssignmentFromTable();
+    const selectedSet = new Set(
+      (pendingBoardParams.rooms || []).map(String),
+    );
+    const invalidSet = new Set();
+    draft.forEach((entry) => {
+      (entry.rooms || []).forEach((r) => {
+        const key = String(r);
+        if (!selectedSet.has(key)) {
+          invalidSet.add(key);
+        }
+      });
+    });
+
+    if (invalidSet.size > 0) {
+      const invalidList = Array.from(invalidSet).sort(
+        (a, b) => Number(a) - Number(b),
+      );
+      alert(
+        `The following rooms are not in today's assignment: ${invalidList.join(", ")}. Please check and correct before continuing.`,
+      );
+      return;
+    }
+
+    outgoingAssignment = draft;
     const params = pendingBoardParams;
     pendingBoardParams = null;
     showBoard(params);
