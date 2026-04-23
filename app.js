@@ -878,6 +878,101 @@
             </div>
           </section>
 
+          <div class="board-legend-block">
+            <div class="board-legend__button-row">
+              <button
+                type="button"
+                class="board-legend__toggle"
+                id="board-legend-toggle"
+                aria-expanded="false"
+                aria-controls="board-legend-panel"
+              >
+                🔑 Legend
+              </button>
+            </div>
+            <div
+              id="board-legend-panel"
+              class="board-legend__panel"
+              role="region"
+              aria-label="Flag legend"
+              hidden
+            >
+              <div class="board-legend__inner">
+                <div class="board-legend__group">
+                  <div class="board-legend__cat">Medication &amp; Transfusion:</div>
+                  <div class="board-legend__row">
+                    <span class="patient-flag-dot patient-flag-dot--heparin" aria-hidden="true"></span>
+                    <span class="board-legend__row-label">Heparin Drip</span>
+                  </div>
+                  <div class="board-legend__row">
+                    <span class="patient-flag-dot patient-flag-dot--transfusion" aria-hidden="true"></span>
+                    <span class="board-legend__row-label">Transfusion Risk</span>
+                  </div>
+                </div>
+                <div class="board-legend__group">
+                  <div class="board-legend__cat">Isolation &amp; Precautions:</div>
+                  <div class="board-legend__row">
+                    <span class="patient-flag-dot patient-flag-dot--isolation" aria-hidden="true"></span>
+                    <span class="board-legend__row-label">Isolation</span>
+                  </div>
+                  <div class="board-legend__row">
+                    <span class="patient-flag-dot patient-flag-dot--aggressive" aria-hidden="true"></span>
+                    <span class="board-legend__row-label">Aggressive Patient</span>
+                  </div>
+                  <div class="board-legend__row">
+                    <span class="patient-flag-dot board-legend__dot--purple" aria-hidden="true"></span>
+                    <span class="board-legend__row-label">1:1 (Safety / Suicide Precaution)</span>
+                  </div>
+                  <div class="board-legend__row">
+                    <span class="patient-flag-dot patient-flag-dot--isolation" aria-hidden="true"></span>
+                    <span class="board-legend__row-label">Police / Prison Custody</span>
+                  </div>
+                </div>
+                <div class="board-legend__group">
+                  <div class="board-legend__cat">Procedures &amp; Discharge:</div>
+                  <div class="board-legend__row">
+                    <span class="patient-flag-dot patient-flag-dot--or" aria-hidden="true"></span>
+                    <span class="board-legend__row-label">Going to OR</span>
+                  </div>
+                  <div class="board-legend__row">
+                    <span class="patient-flag-dot patient-flag-dot--discharge" aria-hidden="true"></span>
+                    <span class="board-legend__row-label">Expected Discharge</span>
+                  </div>
+                </div>
+                <div class="board-legend__group">
+                  <div class="board-legend__cat">Acuity &amp; Equipment:</div>
+                  <div class="board-legend__row">
+                    <span class="patient-flag-dot patient-flag-dot--acuity" aria-hidden="true"></span>
+                    <span class="board-legend__row-label">High Acuity</span>
+                  </div>
+                  <div class="board-legend__row">
+                    <span class="patient-flag-dot patient-flag-dot--trach" aria-hidden="true"></span>
+                    <span class="board-legend__row-label">Trach</span>
+                  </div>
+                  <div class="board-legend__row">
+                    <span class="patient-flag-dot patient-flag-dot--lines" aria-hidden="true"></span>
+                    <span class="board-legend__row-label">Lines (PICC / Central)</span>
+                  </div>
+                  <div class="board-legend__row">
+                    <span class="patient-flag-dot patient-flag-dot--drains" aria-hidden="true"></span>
+                    <span class="board-legend__row-label">Drains (JP / IR)</span>
+                  </div>
+                  <div class="board-legend__row">
+                    <span class="patient-flag-dot patient-flag-dot--wound" aria-hidden="true"></span>
+                    <span class="board-legend__row-label">Wound Care</span>
+                  </div>
+                </div>
+                <div class="board-legend__group">
+                  <div class="board-legend__cat">Other:</div>
+                  <div class="board-legend__row">
+                    <span class="patient-flag-dot patient-flag-dot--other" aria-hidden="true"></span>
+                    <span class="board-legend__row-label">Other (with comment)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <section class="board-section board-section--footer">
             <div class="board-footer-row">CNA: (to be assigned)</div>
             <div class="board-footer-row">1:1: (to be assigned)</div>
@@ -889,6 +984,7 @@
     setupDragAndDrop(board);
     setupNurseNameEditing(board);
     setupReturningToggles(board);
+    setupBoardLegend(board);
 
     const backBtn = document.getElementById("back-to-setup");
     if (backBtn) backBtn.addEventListener("click", showSetup, { once: true });
@@ -1367,6 +1463,22 @@
     });
   }
 
+  function setupBoardLegend(boardRoot) {
+    const btn = boardRoot.querySelector("#board-legend-toggle");
+    const panel = boardRoot.querySelector("#board-legend-panel");
+    if (!btn || !panel) return;
+    btn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (panel.hasAttribute("hidden")) {
+        panel.removeAttribute("hidden");
+        btn.setAttribute("aria-expanded", "true");
+      } else {
+        panel.setAttribute("hidden", "");
+        btn.setAttribute("aria-expanded", "false");
+      }
+    });
+  }
+
   function onCardDragStart(event) {
     draggedCard = event.currentTarget;
     dragOriginParent = draggedCard.parentElement;
@@ -1664,6 +1776,22 @@
     );
   }
 
+  function getPatientCardFlagSummaryParts(room) {
+    const f = getDisplayFlagsForRoom(room);
+    const names = [];
+    PATIENT_FLAGS_GRID.forEach((flag) => {
+      if (f[flag.id]) names.push(flag.label);
+    });
+    if (f.other) names.push("Other");
+    const main = names.join(", ");
+    const oc =
+      f.other && typeof f.otherComment === "string" ? f.otherComment.trim() : "";
+    return {
+      main,
+      note: oc ? `Note: ${oc}` : "",
+    };
+  }
+
   function syncPatientFlagOtherCommentUI(wrap, checkbox, input) {
     const show = Boolean(checkbox && checkbox.checked);
     if (wrap) {
@@ -1890,8 +2018,10 @@
         if (flagsContainer) {
           flagsContainer.remove();
         }
-        const oldTip = card.querySelector(".patient-card__other-tooltip");
-        if (oldTip) oldTip.remove();
+        const oldOtherTip = card.querySelector(".patient-card__other-tooltip");
+        if (oldOtherTip) oldOtherTip.remove();
+        const oldFlagTip = card.querySelector(".patient-card__flag-tooltip");
+        if (oldFlagTip) oldFlagTip.remove();
         return;
       }
 
@@ -1919,19 +2049,27 @@
         }
       }
 
-      const oc =
-        typeof flagsForRoom.otherComment === "string"
-          ? flagsForRoom.otherComment.trim()
-          : "";
-      let tip = card.querySelector(".patient-card__other-tooltip");
-      if (oc) {
-        if (!tip) {
-          tip = document.createElement("div");
-          tip.className = "patient-card__other-tooltip";
-          card.appendChild(tip);
-        }
-        tip.textContent = oc;
-      } else if (tip) {
+      const parts = getPatientCardFlagSummaryParts(room);
+      let tip = card.querySelector(".patient-card__flag-tooltip");
+      if (!tip) {
+        tip = document.createElement("div");
+        tip.className = "patient-card__flag-tooltip";
+        card.appendChild(tip);
+      }
+      tip.textContent = "";
+      if (parts.main) {
+        const mainEl = document.createElement("div");
+        mainEl.className = "patient-card__flag-tooltip__main";
+        mainEl.textContent = parts.main;
+        tip.appendChild(mainEl);
+      }
+      if (parts.note) {
+        const noteEl = document.createElement("div");
+        noteEl.className = "patient-card__flag-tooltip__note";
+        noteEl.textContent = parts.note;
+        tip.appendChild(noteEl);
+      }
+      if (!tip.firstChild) {
         tip.remove();
       }
     });

@@ -579,7 +579,7 @@ body {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-soft);
   border: 1px solid rgba(148, 163, 184, 0.25);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .board-header {
@@ -612,8 +612,119 @@ body {
 }
 
 .board-body {
+  position: relative;
   padding: 1.25rem 1.5rem 1.5rem;
   background-color: var(--color-bg);
+}
+
+.board-legend-block {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin: 0 0 0.75rem 0;
+}
+
+.board-legend__button-row {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin: 0 0 0.15rem 0;
+}
+
+.board-legend__toggle {
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.32rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid rgba(27, 58, 107, 0.22);
+  background-color: #ffffff;
+  color: var(--color-navy);
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.board-legend__toggle:hover {
+  background-color: #f1f5f9;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.1);
+}
+
+.board-legend__panel {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin-top: 0.35rem;
+  padding: 0.65rem 0.75rem 0.75rem;
+  background-color: #ffffff;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.12);
+}
+
+.board-legend__inner {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.5rem 0.9rem;
+  align-items: start;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 800px) {
+  .board-legend__inner {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .board-legend__inner {
+    grid-template-columns: 1fr;
+  }
+}
+
+.board-legend__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.board-legend__cat {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-navy);
+  letter-spacing: 0.02em;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.board-legend__row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  color: var(--color-text-main);
+  padding: 0.04rem 0;
+}
+
+.board-legend__row .patient-flag-dot {
+  flex-shrink: 0;
+}
+
+.board-legend__row-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.board-legend__dot--purple {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  display: inline-block;
+  background-color: #8b5cf6;
 }
 
 .board-section {
@@ -726,23 +837,25 @@ body {
   background-color: #64748b;
 }
 
-.patient-card__other-tooltip {
+.patient-card__flag-tooltip {
   position: absolute;
   left: 50%;
   bottom: 100%;
   transform: translateX(-50%);
-  margin-bottom: 0.35rem;
-  padding: 0.35rem 0.5rem;
-  max-width: min(14rem, 85vw);
-  border-radius: 6px;
-  background-color: #0f172a;
-  color: #f8fafc;
-  font-size: 0.72rem;
+  margin-bottom: 0.4rem;
+  padding: 0.45rem 0.55rem;
+  max-width: 220px;
+  border-radius: 8px;
+  background-color: var(--color-navy);
+  color: #ffffff;
+  font-size: 0.8rem;
   font-weight: 500;
-  line-height: 1.35;
+  line-height: 1.4;
   text-align: left;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.25);
-  z-index: 5;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.22);
+  z-index: 8;
+  white-space: normal;
+  word-wrap: break-word;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -751,9 +864,25 @@ body {
     visibility 0.15s ease;
 }
 
-.patient-card:hover .patient-card__other-tooltip {
+.patient-card__flag-tooltip__main {
+  display: block;
+}
+
+.patient-card__flag-tooltip__note {
+  display: block;
+  margin-top: 0.35em;
+  font-weight: 500;
+  opacity: 0.95;
+}
+
+.patient-card:hover:not(.patient-card--dragging) .patient-card__flag-tooltip {
   opacity: 1;
   visibility: visible;
+}
+
+.patient-card--dragging .patient-card__flag-tooltip {
+  opacity: 0 !important;
+  visibility: hidden !important;
 }
 
 .nurse-grid {
@@ -1136,7 +1265,11 @@ body {
     display: none;
   }
 
-  .patient-card__other-tooltip {
+  .board-legend-block {
+    display: none !important;
+  }
+
+  .patient-card__flag-tooltip {
     display: none !important;
   }
 
