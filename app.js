@@ -474,6 +474,49 @@
     clearAllNurseAssignments();
   }
 
+  function clearAllPatientFlagsEverywhere() {
+    Object.keys(patientFlags).forEach((k) => {
+      delete patientFlags[k];
+    });
+    const seen = new Set();
+    document.querySelectorAll(".patient-card[data-room]").forEach((card) => {
+      const r = card.dataset.room;
+      if (!r || seen.has(r)) return;
+      seen.add(r);
+      updateCardsForRoomFlags(r);
+    });
+    evaluateNurseSlotRules();
+  }
+
+  function onResetAllFlagsClick() {
+    const ok = window.confirm(
+      "This will clear ALL patient flags on every room.\n\nAre you sure?",
+    );
+    if (!ok) return;
+    clearAllPatientFlagsEverywhere();
+  }
+
+  function clearPatientFlagModalFormFields() {
+    const modal = document.getElementById("patient-flag-modal");
+    if (!modal) return;
+    const form = modal.querySelector("#patient-flag-form");
+    if (!form) return;
+
+    PATIENT_FLAGS_GRID.forEach((flag) => {
+      const input = form.querySelector(`input[name="flag-${flag.id}"]`);
+      if (input) input.checked = false;
+    });
+
+    const otherCb = form.querySelector('input[name="flag-other"]');
+    const otherWrap = form.querySelector(
+      ".patient-flag-form__other-comment-wrap",
+    );
+    const otherInput = form.querySelector(".patient-flag-form__other-input");
+    if (otherCb) otherCb.checked = false;
+    if (otherInput) otherInput.value = "";
+    syncPatientFlagOtherCommentUI(otherWrap, otherCb, otherInput);
+  }
+
   function showAutoAssignToast() {
     let el = document.getElementById("auto-assign-toast");
     if (!el) {
@@ -820,6 +863,13 @@
               </button>
               <button
                 type="button"
+                id="reset-flags-button"
+                class="button button--reset-flags board-assignment-actions__reset-flags"
+              >
+                Reset Flags
+              </button>
+              <button
+                type="button"
                 id="clear-assignment-button"
                 class="button button--danger board-assignment-actions__clear"
               >
@@ -856,6 +906,11 @@
     const clearAssignmentBtn = document.getElementById("clear-assignment-button");
     if (clearAssignmentBtn) {
       clearAssignmentBtn.addEventListener("click", onClearAssignmentClick);
+    }
+
+    const resetFlagsBtn = document.getElementById("reset-flags-button");
+    if (resetFlagsBtn) {
+      resetFlagsBtn.addEventListener("click", onResetAllFlagsClick);
     }
   }
 
@@ -1689,6 +1744,13 @@
               </div>
             </div>
             <div class="patient-flag-form__footer">
+              <button
+                type="button"
+                class="button button--modal-clear patient-flag-form__clear-all"
+                id="patient-flag-form-clear-all"
+              >
+                Clear All
+              </button>
               <button type="submit" class="button button--primary patient-flag-form__save">
                 Save
               </button>
@@ -1712,6 +1774,13 @@
     }
 
     wirePatientFlagOtherField(modal);
+
+    const clearAllBtn = modal.querySelector("#patient-flag-form-clear-all");
+    if (clearAllBtn) {
+      clearAllBtn.addEventListener("click", () => {
+        clearPatientFlagModalFormFields();
+      });
+    }
 
     return modal;
   }
