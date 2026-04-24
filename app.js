@@ -37,6 +37,180 @@
   const nurseSlotReturning = Object.create(null);
   let currentShiftType = null;
   let activeModalRoom = null;
+  const STORAGE_KEY = "chargedeck_board_state";
+  let isRestoringBoardState = false;
+
+  function getBoardContainerIfVisible() {
+    const board = document.getElementById("board-container");
+    if (!board || board.style.display === "none") return null;
+    return board;
+  }
+
+  function collectBoardStateForStorage() {
+    if (!getBoardContainerIfVisible() || !currentShiftType) return null;
+
+    const slots = document.querySelectorAll(".nurse-slot");
+    if (!slots.length) return null;
+
+    const nurseCount = document.querySelectorAll(".nurse-slot").length;
+
+    const assignment = { unassigned: [] };
+    const unassignedList = document.querySelector(".unassigned-list");
+    if (unassignedList) {
+      assignment.unassigned = Array.from(
+        unassignedList.querySelectorAll(".patient-card[data-room]"),
+        (c) => c.dataset.room,
+      ).filter(Boolean);
+    }
+
+    slots.forEach((slot) => {
+      const body = slot.querySelector(".nurse-slot__body");
+      const titleEl = slot.querySelector(".nurse-slot__title");
+      if (!body) return;
+      const name = titleEl ? titleEl.textContent.trim() : "";
+      const rooms = Array.from(
+        body.querySelectorAll(".patient-card[data-room]"),
+        (c) => c.dataset.room,
+      ).filter(Boolean);
+      if (slot.dataset.slotType === "charge") {
+        assignment.charge = { rooms, name: name || "Charge" };
+      } else {
+        const idx = slot.dataset.nurseIndex;
+        if (idx) {
+          const btn = slot.querySelector(".nurse-slot__returning");
+          const on = Boolean(
+            btn && btn.classList.contains("nurse-slot__returning--on"),
+          );
+          assignment[`nurse${idx}`] = {
+            rooms,
+            name: name || `Nurse ${idx}`,
+            returning: on,
+          };
+        }
+      }
+    });
+
+    const allRoomSet = new Set();
+    assignment.unassigned.forEach((r) => allRoomSet.add(String(r)));
+    if (assignment.charge) {
+      assignment.charge.rooms.forEach((r) => allRoomSet.add(String(r)));
+    }
+    for (const k of Object.keys(assignment)) {
+      if (k === "unassigned" || k === "charge") continue;
+      if (k.startsWith("nurse") && assignment[k] && Array.isArray(assignment[k].rooms)) {
+        assignment[k].rooms.forEach((r) => allRoomSet.add(String(r)));
+      }
+    }
+    const rooms = Array.from(allRoomSet).sort(
+      (a, b) => Number.parseInt(a, 10) - Number.parseInt(b, 10),
+    );
+
+    return {
+      v: 1,
+      shiftType: currentShiftType,
+      nurseCount,
+      rooms,
+      patientFlags: JSON.parse(JSON.stringify(patientFlags)),
+      outgoingAssignment: JSON.parse(JSON.stringify(outgoingAssignment)),
+      assignment,
+    };
+  }
+
+  function saveBoardStateToLocalStorage() {
+    if (isRestoringBoardState) return;
+    const data = collectBoardStateForStorage();
+    if (!data) return;
+    try {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ ...data, savedAt: new Date().toISOString() }),
+      );
+    } catch (e) {
+      /* ignore quota / private mode */
+    }
+  }
+
+  function applyRestoredState(state) {
+    if (!state || !state.assignment) return;
+    isRestoringBoardState = true;
+    try {
+      const a = state.assignment;
+      const getCard = (room) =>
+        document.querySelector(`.patient-card[data-room="${room}"]`);
+
+      function appendToBody(body, roomList) {
+        if (!body || !Array.isArray(roomList)) return;
+        roomList.forEach((r) => {
+          const key = String(r);
+          const c = getCard(key);
+          if (c) body.appendChild(c);
+        });
+        if (body.classList && body.classList.contains("nurse-slot__body")) {
+          sortNurseSlotPatients(body);
+        }
+      }
+
+      if (a.charge) {
+        const b = document.querySelector(
+          '.nurse-slot[data-slot-type="charge"] .nurse-slot__body',
+        );
+        if (a.charge.rooms && b) appendToBody(b, a.charge.rooms);
+        const t = document.querySelector(
+          '.nurse-slot[data-slot-type="charge"] .nurse-slot__title',
+        );
+        if (t) t.textContent = a.charge.name || "Charge";
+      }
+
+      for (let i = 2; i <= 20; i += 1) {
+        const slotA = a[`nurse${i}`];
+        if (!slotA) continue;
+        const body = document.querySelector(
+          `.nurse-slot[data-nurse-index="${i}"] .nurse-slot__body`,
+        );
+        if (slotA.rooms && body) appendToBody(body, slotA.rooms);
+        const t = document.querySelector(
+          `.nurse-slot[data-nurse-index="${i}"] .nurse-slot__title`,
+        );
+        if (t) t.textContent = slotA.name || `Nurse ${i}`;
+        const idxStr = String(i);
+        const btn = document.querySelector(
+          `.nurse-slot__returning[data-nurse-index="${idxStr}"]`,
+        );
+        if (btn) {
+          const on = Boolean(slotA.returning);
+          nurseSlotReturning[idxStr] = on;
+          btn.classList.toggle("nurse-slot__returning--on", on);
+          btn.setAttribute("aria-pressed", on ? "true" : "false");
+          btn.textContent = on ? "\u21A9 Returning" : "Returning";
+        }
+      }
+
+      const unL = document.querySelector(".unassigned-list");
+      if (unL && Array.isArray(a.unassigned)) {
+        a.unassigned.forEach((r) => {
+          const c = getCard(String(r));
+          if (c) unL.appendChild(c);
+        });
+        sortUnassignedPatients();
+      }
+    } finally {
+      isRestoringBoardState = false;
+    }
+    updateNurseSlotCounts();
+    evaluateNurseSlotRules();
+    (state.rooms || []).forEach((r) => {
+      updateCardsForRoomFlags(String(r));
+    });
+    saveBoardStateToLocalStorage();
+  }
+
+  function onBackToSetupWithConfirm() {
+    const msg =
+      "Going back to setup will not delete your current assignment \u2014 it is saved automatically. Continue?";
+    if (window.confirm(msg)) {
+      showSetup();
+    }
+  }
 
   const POD_ROOM_IDS = {
     podA: [1, 2, 3, 5],
@@ -472,6 +646,7 @@
 
   function onClearAssignmentClick() {
     clearAllNurseAssignments();
+    saveBoardStateToLocalStorage();
   }
 
   function clearAllPatientFlagsEverywhere() {
@@ -494,6 +669,7 @@
     );
     if (!ok) return;
     clearAllPatientFlagsEverywhere();
+    saveBoardStateToLocalStorage();
   }
 
   function clearPatientFlagModalFormFields() {
@@ -559,6 +735,7 @@
   function onAutoAssignClick() {
     runAutoAssign();
     showAutoAssignToast();
+    saveBoardStateToLocalStorage();
   }
 
   function getNurseCount() {
@@ -797,7 +974,8 @@
     return slots;
   }
 
-  function showBoard({ shiftType, nurseCount, rooms }) {
+  function showBoard({ shiftType, nurseCount, rooms }, options) {
+    options = options || {};
     const main = document.querySelector(".app-main");
     const board = ensureBoardContainer();
     const setupScreen = document.getElementById("setup-screen");
@@ -987,7 +1165,13 @@
     setupBoardLegend(board);
 
     const backBtn = document.getElementById("back-to-setup");
-    if (backBtn) backBtn.addEventListener("click", showSetup, { once: true });
+    if (backBtn) {
+      backBtn.addEventListener("click", onBackToSetupWithConfirm, { once: true });
+    }
+
+    if (options.restoreState) {
+      applyRestoredState(options.restoreState);
+    }
 
     const printBtn = document.getElementById("print-assignment");
     if (printBtn) {
@@ -1414,6 +1598,7 @@
       titleEl.textContent = newName;
       titleEl.style.display = "";
       input.remove();
+      saveBoardStateToLocalStorage();
     };
 
     input.addEventListener("keydown", (e) => {
@@ -1459,6 +1644,7 @@
         nurseSlotReturning[idx] = on;
         btn.setAttribute("aria-pressed", on ? "true" : "false");
         btn.textContent = on ? "\u21A9 Returning" : "Returning";
+        saveBoardStateToLocalStorage();
       });
     });
   }
@@ -1560,6 +1746,7 @@
 
     updateNurseSlotCounts();
     evaluateNurseSlotRules();
+    saveBoardStateToLocalStorage();
   }
 
   function sortNurseSlotPatients(body) {
@@ -1728,6 +1915,7 @@
       }
       updateNurseSlotCounts();
       evaluateNurseSlotRules();
+      saveBoardStateToLocalStorage();
     } else if (originParent) {
       if (
         originNextSibling &&
@@ -2001,6 +2189,7 @@
     updateCardsForRoomFlags(activeModalRoom);
     evaluateNurseSlotRules();
     closePatientFlagModal();
+    saveBoardStateToLocalStorage();
   }
 
   function updateCardsForRoomFlags(room) {
@@ -2171,6 +2360,123 @@
     renderOutgoingTableRows(n);
   }
 
+  function removeRestoreSessionBanner() {
+    const b = document.getElementById("chargedeck-restore-banner");
+    if (b) b.remove();
+  }
+
+  function onRestoreSessionClick() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    let state;
+    try {
+      state = JSON.parse(raw);
+    } catch (e) {
+      return;
+    }
+    if (!state || !state.assignment) return;
+    if (!Array.isArray(state.rooms) || !state.shiftType) return;
+    const nParsed = Number.parseInt(String(state.nurseCount), 10);
+    if (!Number.isFinite(nParsed) || nParsed < 1) return;
+
+    const allowedRooms = new Set(state.rooms.map((r) => String(r)));
+    Object.keys(patientFlags).forEach((k) => {
+      delete patientFlags[k];
+    });
+    if (state.patientFlags && typeof state.patientFlags === "object") {
+      Object.keys(state.patientFlags).forEach((k) => {
+        if (allowedRooms.has(String(k)) && state.patientFlags[k]) {
+          patientFlags[k] = JSON.parse(
+            JSON.stringify(state.patientFlags[k]),
+          );
+        }
+      });
+    }
+    outgoingAssignment = Array.isArray(state.outgoingAssignment)
+      ? JSON.parse(JSON.stringify(state.outgoingAssignment))
+      : [];
+    pendingBoardParams = null;
+
+    removeRestoreSessionBanner();
+    showBoard(
+      {
+        shiftType: state.shiftType,
+        nurseCount: nParsed,
+        rooms: state.rooms.map((r) => String(r)),
+      },
+      { restoreState: state },
+    );
+  }
+
+  function onStartFreshClick() {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (e) {
+      /* ignore */
+    }
+    removeRestoreSessionBanner();
+  }
+
+  function ensureRestoreSessionBanner() {
+    const setup = document.getElementById("setup-screen");
+    if (!setup) return;
+    if (setup.style.display === "none") return;
+    const outgoing = document.getElementById("outgoing-screen");
+    if (outgoing && outgoing.style.display === "block") {
+      return;
+    }
+    if (document.getElementById("chargedeck-restore-banner")) return;
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    let st;
+    try {
+      st = JSON.parse(raw);
+    } catch (e) {
+      return;
+    }
+    if (!st || !st.savedAt) return;
+    const when = new Date(st.savedAt);
+    const whenStr = Number.isNaN(when.getTime())
+      ? String(st.savedAt)
+      : when.toLocaleString();
+    const wrap = document.createElement("div");
+    wrap.id = "chargedeck-restore-banner";
+    wrap.setAttribute("role", "region");
+    wrap.setAttribute("aria-label", "Saved session");
+    const p = document.createElement("p");
+    p.appendChild(
+      document.createTextNode("You have a saved session from "),
+    );
+    const strong = document.createElement("strong");
+    strong.textContent = whenStr;
+    p.appendChild(strong);
+    p.appendChild(
+      document.createTextNode(". Would you like to restore it?"),
+    );
+    p.style.margin = "0 0 0.6rem 0";
+    const actions = document.createElement("div");
+    actions.style.cssText = "display:flex;flex-wrap:wrap;gap:0.5rem;";
+    const btnYes = document.createElement("button");
+    btnYes.type = "button";
+    btnYes.id = "chargedeck-restore-confirm";
+    btnYes.className = "button";
+    btnYes.textContent = "Restore Session";
+    const btnNo = document.createElement("button");
+    btnNo.type = "button";
+    btnNo.id = "chargedeck-restore-dismiss";
+    btnNo.className = "button button--secondary";
+    btnNo.textContent = "Start Fresh";
+    actions.appendChild(btnYes);
+    actions.appendChild(btnNo);
+    wrap.style.cssText =
+      "margin:0 0 1rem 0;padding:0.75rem 1rem;border:1px solid rgba(148,163,184,0.45);border-radius:10px;background:#f0f4fb;font-size:0.9rem;color:#0f172a;";
+    wrap.appendChild(p);
+    wrap.appendChild(actions);
+    setup.insertBefore(wrap, setup.firstChild);
+    btnYes.addEventListener("click", onRestoreSessionClick);
+    btnNo.addEventListener("click", onStartFreshClick);
+  }
+
   function init() {
     const btn = document.getElementById("generate-board");
     if (btn) {
@@ -2205,6 +2511,7 @@
     }
 
     ensureFlagModal();
+    ensureRestoreSessionBanner();
   }
 
   if (document.readyState === "loading") {
