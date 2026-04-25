@@ -606,7 +606,15 @@ body {
   opacity: 0.9;
 }
 
-.board-header__back {
+.board-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.board-header__back,
+.board-header__outgoing {
   font-size: 0.9rem;
   padding-inline: 0.75rem;
 }

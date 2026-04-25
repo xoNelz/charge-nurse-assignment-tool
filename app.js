@@ -38,12 +38,148 @@
   let currentShiftType = null;
   let activeModalRoom = null;
   const STORAGE_KEY = "chargedeck_board_state";
+  const OUTGOING_STORAGE_KEY = "chargedeck_outgoing_assignment";
   let isRestoringBoardState = false;
+  /** When true, Continue/Skip on outgoing returns to the existing board DOM (no showBoard). */
+  let resumeExistingBoardAfterOutgoing = false;
 
   function getBoardContainerIfVisible() {
     const board = document.getElementById("board-container");
     if (!board || board.style.display === "none") return null;
     return board;
+  }
+
+  function saveOutgoingStandaloneToLocalStorage(draft, params) {
+    if (!params) return;
+    const payload = {
+      savedAt: new Date().toISOString(),
+      nurseCount: params.nurseCount,
+      shiftType: params.shiftType,
+      rooms: (params.rooms || []).map(String),
+      entries: draft.map((e) => ({
+        name: e && e.name ? String(e.name) : "",
+        rooms: Array.isArray(e.rooms) ? e.rooms.slice() : [],
+      })),
+    };
+    try {
+      localStorage.setItem(OUTGOING_STORAGE_KEY, JSON.stringify(payload));
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function mergeOutgoingIntoChargedeckBoardState(draft, params) {
+    if (!params) return;
+    let base = null;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) base = JSON.parse(raw);
+    } catch (e) {
+      /* ignore */
+    }
+    if (!base || typeof base !== "object") {
+      base = { v: 1, patientFlags: {}, assignment: { unassigned: [] } };
+    }
+    const now = new Date().toISOString();
+    base.shiftType = params.shiftType;
+    base.nurseCount = params.nurseCount;
+    base.rooms = (params.rooms || []).map(String);
+    base.outgoingAssignment = JSON.parse(JSON.stringify(draft));
+    base.savedAt = now;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(base));
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  function loadOutgoingFromLocalStorageForPreload() {
+    try {
+      const rawO = localStorage.getItem(OUTGOING_STORAGE_KEY);
+      if (rawO) {
+        const o = JSON.parse(rawO);
+        if (o) {
+          const n = Number.parseInt(String(o.nurseCount), 10);
+          if (Number.isFinite(n) && n >= 1 && n <= 12 && Array.isArray(o.entries)) {
+            o.nurseCount = n;
+            return o;
+          }
+        }
+      }
+    } catch (e) {
+      /* fall through */
+    }
+
+    const pending = pendingBoardParams;
+    if (!pending) return null;
+    try {
+      const rawB = localStorage.getItem(STORAGE_KEY);
+      if (!rawB) return null;
+      const st = JSON.parse(rawB);
+      if (!st || !Array.isArray(st.outgoingAssignment)) return null;
+      if (String(st.shiftType) !== String(pending.shiftType)) return null;
+      if (Number(st.nurseCount) !== Number(pending.nurseCount)) return null;
+      const pr = (pending.rooms || []).map(String).sort();
+      const sr = (st.rooms || []).map(String).sort();
+      if (pr.length !== sr.length) return null;
+      for (let i = 0; i < pr.length; i += 1) {
+        if (pr[i] !== sr[i]) return null;
+      }
+      const n = Number.parseInt(String(st.nurseCount), 10);
+      if (!Number.isFinite(n) || n < 1 || n > 12) return null;
+      return {
+        nurseCount: n,
+        entries: st.outgoingAssignment.map((e) => ({
+          name: e && e.name != null ? String(e.name) : "",
+          rooms: Array.isArray(e.rooms) ? e.rooms.slice() : [],
+        })),
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function removeOutgoingPreloadBanner() {
+    const b = document.getElementById("chargedeck-outgoing-load-banner");
+    if (b) b.remove();
+  }
+
+  function showOutgoingPreloadBanner() {
+    const outgoing = document.getElementById("outgoing-screen");
+    if (!outgoing) return;
+    if (document.getElementById("chargedeck-outgoing-load-banner")) return;
+    const wrap = outgoing.querySelector(".outgoing-screen__table-wrap");
+    if (!wrap || !wrap.parentNode) return;
+    const el = document.createElement("p");
+    el.id = "chargedeck-outgoing-load-banner";
+    el.className = "outgoing-screen__preload-hint";
+    el.style.cssText =
+      "margin:0 0 0.65rem 0;padding:0.45rem 0.6rem;border-radius:8px;font-size:0.88rem;color:#0f172a;background:#eef2ff;border:1px solid rgba(27,58,107,0.2);";
+    el.textContent =
+      "Previous outgoing assignment loaded. You can edit or clear it below.";
+    wrap.parentNode.insertBefore(el, wrap);
+  }
+
+  function applyOutgoingTableFromSavedEntries(entries) {
+    if (!Array.isArray(entries)) return;
+    const rows = document.querySelectorAll(
+      "#outgoing-table-body .outgoing-table__row",
+    );
+    rows.forEach((row, i) => {
+      const e = entries[i];
+      if (!e) return;
+      const nameIn = row.querySelector(".outgoing-table__name");
+      const roomsIn = row.querySelector(".outgoing-table__rooms");
+      if (nameIn) nameIn.value = e.name != null ? String(e.name) : "";
+      if (roomsIn) {
+        const rlist = e.rooms;
+        if (Array.isArray(rlist) && rlist.length) {
+          roomsIn.value = rlist.map((r) => String(r)).join(", ");
+        } else {
+          roomsIn.value = "";
+        }
+      }
+    });
   }
 
   function collectBoardStateForStorage() {
@@ -210,6 +346,48 @@
     if (window.confirm(msg)) {
       showSetup();
     }
+  }
+
+  function returnToExistingBoardFromOutgoing() {
+    const main = document.querySelector(".app-main");
+    const setupScreen = document.getElementById("setup-screen");
+    const outgoingScreen = document.getElementById("outgoing-screen");
+    const board = document.getElementById("board-container");
+    if (main) main.style.display = "none";
+    if (setupScreen) setupScreen.style.display = "none";
+    if (outgoingScreen) {
+      outgoingScreen.style.display = "none";
+      outgoingScreen.setAttribute("aria-hidden", "true");
+    }
+    if (board) board.style.display = "";
+    saveBoardStateToLocalStorage();
+  }
+
+  function onBackToOutgoingFromBoard() {
+    if (!getBoardContainerIfVisible()) {
+      return;
+    }
+    const msg =
+      "Going back to the outgoing assignment screen will not lose your current board \u2014 it is saved automatically. Continue?";
+    if (!window.confirm(msg)) {
+      return;
+    }
+    const data = collectBoardStateForStorage();
+    if (!data) {
+      return;
+    }
+    saveBoardStateToLocalStorage();
+    pendingBoardParams = {
+      shiftType: data.shiftType,
+      nurseCount: data.nurseCount,
+      rooms: (data.rooms || []).map((r) => String(r)),
+    };
+    resumeExistingBoardAfterOutgoing = true;
+    const board = document.getElementById("board-container");
+    if (board) {
+      board.style.display = "none";
+    }
+    showOutgoingScreen({ fromBoard: true });
   }
 
   const POD_ROOM_IDS = {
@@ -804,6 +982,7 @@
     const outgoingScreen = document.getElementById("outgoing-screen");
 
     pendingBoardParams = null;
+    resumeExistingBoardAfterOutgoing = false;
 
     if (main) main.style.display = "";
     if (setupScreen) setupScreen.style.display = "";
@@ -888,7 +1067,8 @@
     return result;
   }
 
-  function showOutgoingScreen() {
+  function showOutgoingScreen(options) {
+    options = options || {};
     const main = document.querySelector(".app-main");
     const setupScreen = document.getElementById("setup-screen");
     const outgoingScreen = document.getElementById("outgoing-screen");
@@ -899,6 +1079,42 @@
     if (outgoingScreen) {
       outgoingScreen.style.display = "block";
       outgoingScreen.setAttribute("aria-hidden", "false");
+    }
+
+    removeOutgoingPreloadBanner();
+
+    if (options.fromBoard && pendingBoardParams) {
+      const n = Number.parseInt(String(pendingBoardParams.nurseCount), 10);
+      const nSafe =
+        Number.isFinite(n) && n >= 1 && n <= 12 ? n : 0;
+      if (countInput) countInput.value = nSafe > 0 ? String(nSafe) : "";
+      renderOutgoingTableRows(nSafe);
+      const list = Array.isArray(outgoingAssignment) ? outgoingAssignment : [];
+      const entries = [];
+      for (let i = 0; i < nSafe; i += 1) {
+        const e = list[i];
+        if (e) {
+          entries.push({
+            name: e.name != null ? String(e.name) : "",
+            rooms: Array.isArray(e.rooms) ? e.rooms.slice() : [],
+          });
+        } else {
+          entries.push({ name: "", rooms: [] });
+        }
+      }
+      applyOutgoingTableFromSavedEntries(entries);
+      return;
+    }
+
+    const savedOutgoing = loadOutgoingFromLocalStorageForPreload();
+    if (savedOutgoing) {
+      if (countInput) {
+        countInput.value = String(savedOutgoing.nurseCount);
+      }
+      renderOutgoingTableRows(savedOutgoing.nurseCount);
+      applyOutgoingTableFromSavedEntries(savedOutgoing.entries);
+      showOutgoingPreloadBanner();
+      return;
     }
 
     let nForRows = 0;
@@ -1008,6 +1224,13 @@
               class="button button--secondary board-header__print"
             >
               Print
+            </button>
+            <button
+              type="button"
+              id="back-to-outgoing"
+              class="button button--secondary board-header__outgoing"
+            >
+              ← Outgoing
             </button>
             <button
               type="button"
@@ -1167,6 +1390,11 @@
     const backBtn = document.getElementById("back-to-setup");
     if (backBtn) {
       backBtn.addEventListener("click", onBackToSetupWithConfirm, { once: true });
+    }
+
+    const backOutgoingBtn = document.getElementById("back-to-outgoing");
+    if (backOutgoingBtn) {
+      backOutgoingBtn.addEventListener("click", onBackToOutgoingFromBoard);
     }
 
     if (options.restoreState) {
@@ -2294,18 +2522,36 @@
       nurseCount: value,
       rooms,
     };
+    resumeExistingBoardAfterOutgoing = false;
+
+    try {
+      localStorage.removeItem(OUTGOING_STORAGE_KEY);
+    } catch (e) {
+      /* ignore */
+    }
 
     showOutgoingScreen();
   }
 
   function onOutgoingBackToSetup() {
     pendingBoardParams = null;
+    resumeExistingBoardAfterOutgoing = false;
     showSetup();
   }
 
   function onOutgoingSkipToBoard() {
-    outgoingAssignment = [];
     if (!pendingBoardParams) return;
+    if (resumeExistingBoardAfterOutgoing) {
+      const params = pendingBoardParams;
+      saveOutgoingStandaloneToLocalStorage([], params);
+      mergeOutgoingIntoChargedeckBoardState([], params);
+      outgoingAssignment = [];
+      pendingBoardParams = null;
+      resumeExistingBoardAfterOutgoing = false;
+      returnToExistingBoardFromOutgoing();
+      return;
+    }
+    outgoingAssignment = [];
     const params = pendingBoardParams;
     pendingBoardParams = null;
     showBoard(params);
@@ -2338,10 +2584,17 @@
       return;
     }
 
-    outgoingAssignment = draft;
     const params = pendingBoardParams;
+    saveOutgoingStandaloneToLocalStorage(draft, params);
+    mergeOutgoingIntoChargedeckBoardState(draft, params);
+    outgoingAssignment = draft;
     pendingBoardParams = null;
-    showBoard(params);
+    if (resumeExistingBoardAfterOutgoing) {
+      resumeExistingBoardAfterOutgoing = false;
+      returnToExistingBoardFromOutgoing();
+    } else {
+      showBoard(params);
+    }
   }
 
   function onOutgoingNurseCountChange() {
@@ -2396,6 +2649,7 @@
       ? JSON.parse(JSON.stringify(state.outgoingAssignment))
       : [];
     pendingBoardParams = null;
+    resumeExistingBoardAfterOutgoing = false;
 
     removeRestoreSessionBanner();
     showBoard(
@@ -2411,6 +2665,7 @@
   function onStartFreshClick() {
     try {
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(OUTGOING_STORAGE_KEY);
     } catch (e) {
       /* ignore */
     }
