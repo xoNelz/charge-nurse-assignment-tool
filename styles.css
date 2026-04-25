@@ -39,6 +39,222 @@ body {
     sans-serif;
   background-color: var(--color-bg);
   color: var(--color-text-main);
+  transition: background-color 0.4s ease, color 0.4s ease;
+}
+
+body[data-theme="dark"] {
+  --color-bg: #0f172a;
+  --color-white: #1e293b;
+  --color-navy: #1e3a5f;
+  --color-navy-soft: #2d4a7a;
+  --color-text-main: #e2e8f0;
+  --color-text-muted: #94a3b8;
+  --color-border-subtle: #334155;
+  --color-chip-bg: #1e3a5f;
+  --color-chip-text: #93c5fd;
+  --color-bg-unassigned: #1a2744;
+}
+
+/* Keep primary text on existing navy toolbars light (not --color-white in dark) */
+body[data-theme="dark"] .app-header,
+body[data-theme="dark"] .board-header,
+body[data-theme="dark"] .outgoing-screen__header,
+body[data-theme="dark"] .nurse-slot__header {
+  color: #e2e8f0;
+}
+
+body[data-theme="dark"] .nurse-slot__returning--on,
+body[data-theme="dark"] .nurse-slot__returning--on:hover {
+  color: #ffffff;
+}
+
+body[data-theme="dark"] .board-header {
+  background-color: #1a2f4a;
+}
+
+body[data-theme="dark"] .board-header .button--secondary {
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: none;
+}
+
+body[data-theme="dark"] .board-header .button--secondary:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #f8fafc;
+}
+
+body[data-theme="dark"] .board-section--unassigned {
+  background-color: var(--color-bg-unassigned);
+}
+
+body[data-theme="dark"] .board-section--unassigned .board-section__title {
+  color: #e2e8f0;
+}
+
+body[data-theme="dark"] .board-section--unassigned .patient-card__room {
+  color: #93c5fd;
+}
+
+body[data-theme="dark"] .board-section--unassigned .unassigned-list .patient-card {
+  color: #e2e8f0;
+}
+
+body[data-theme="dark"] .nurse-slot__body {
+  background-color: #162032;
+}
+
+body[data-theme="dark"] .nurse-slot {
+  background-color: var(--color-white);
+  border-color: var(--color-border-subtle);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+body[data-theme="dark"] .patient-card {
+  background-color: #1e3a5f;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+body[data-theme="dark"] .patient-card__room {
+  color: var(--color-chip-text);
+}
+
+body[data-theme="dark"] .nurse-slot__warnings {
+  color: #fecaca !important;
+  background-color: rgba(15, 23, 42, 0.9) !important;
+}
+
+body[data-theme="dark"] .room-tile {
+  background-color: #1e3a5f;
+  color: var(--color-text-main);
+  border-color: rgba(148, 163, 184, 0.4);
+}
+
+body[data-theme="dark"] .room-tile__input:checked + .room-tile {
+  background-color: var(--color-navy);
+  color: #f1f5f9;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 0 0 2px rgba(147, 197, 253, 0.4);
+}
+
+body[data-theme="dark"] .board-legend__toggle {
+  background-color: #1e3a5f;
+  color: #e2e8f0;
+  border-color: var(--color-border-subtle);
+}
+
+body[data-theme="dark"] .board-legend__toggle:hover {
+  background-color: #2d4a7a;
+}
+
+body[data-theme="dark"] .board-legend__panel {
+  background-color: #1e293b;
+  border: 1px solid var(--color-border-subtle);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+body[data-theme="dark"] .board-legend__cat {
+  color: #93c5fd;
+}
+
+body[data-theme="dark"] .board-legend__row,
+body[data-theme="dark"] .board-legend__row-label {
+  color: var(--color-text-main);
+}
+
+body[data-theme="dark"] .outgoing-screen__table-wrap {
+  background-color: #0f172a;
+  border-color: var(--color-border-subtle);
+}
+
+body[data-theme="dark"] .outgoing-table {
+  border: 1px solid var(--color-border-subtle);
+}
+
+body[data-theme="dark"] .outgoing-table__th {
+  color: #cbd5e1;
+  background-color: #1e3a5f;
+  border-bottom-color: var(--color-border-subtle);
+}
+
+body[data-theme="dark"] .text-input {
+  background-color: #0f172a;
+  color: var(--color-text-main);
+  border-color: var(--color-border-subtle);
+}
+
+body[data-theme="dark"] .outgoing-table .outgoing-table__name,
+body[data-theme="dark"] .outgoing-table .outgoing-table__rooms {
+  background-color: #1e293b;
+  color: var(--color-text-main);
+  border-color: var(--color-border-subtle);
+}
+
+body[data-theme="dark"] .outgoing-screen__count-error {
+  color: #f87171;
+}
+
+body[data-theme="dark"] .outgoing-screen__card {
+  background-color: var(--color-white);
+  border-color: var(--color-border-subtle);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+}
+
+body[data-theme="dark"] .outgoing-screen__header {
+  background-color: #1e3a5f;
+  color: #e2e8f0;
+}
+
+body[data-theme="dark"] .outgoing-screen__header .button--secondary {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+}
+
+body[data-theme="dark"] .setup-card,
+body[data-theme="dark"] .assignment-board {
+  border-color: var(--color-border-subtle);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+}
+
+body[data-theme="dark"] .outgoing-screen__actions {
+  background-color: #0f172a;
+  border-top-color: var(--color-border-subtle);
+}
+
+body[data-theme="dark"] .outgoing-table__cell {
+  border-bottom-color: var(--color-border-subtle);
+}
+
+body[data-theme="dark"] .segment-control__option {
+  background-color: #1e293b;
+  color: var(--color-text-main);
+  border-color: var(--color-border-subtle);
+}
+
+body[data-theme="dark"] .segment-control__option:hover {
+  background-color: #334155;
+}
+
+body[data-theme="dark"] .segment-control__input:checked + .segment-control__option {
+  background-color: var(--color-navy);
+  color: #f1f5f9;
+  border-color: rgba(147, 197, 253, 0.45);
+}
+
+body[data-theme="dark"] .text-input:focus {
+  background-color: #1e293b;
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.35);
+}
+
+body[data-theme="dark"] .patient-flag-modal__content {
+  background-color: #1e293b;
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-main);
+}
+
+body[data-theme="dark"] .drop-zone--active {
+  outline-color: rgba(147, 197, 253, 0.55);
 }
 
 .app-header {
@@ -613,6 +829,25 @@ body {
   gap: 0.5rem;
 }
 
+.board-header__theme {
+  font-family: inherit;
+  font-size: 1.05rem;
+  line-height: 1;
+  min-width: 2.4rem;
+  min-height: 2.1rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background-color: rgba(255, 255, 255, 0.12);
+  color: #f1f5f9;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.board-header__theme:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
 .board-header__back,
 .board-header__outgoing {
   font-size: 0.9rem;
@@ -1166,6 +1401,25 @@ body {
     font-size: 13px;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  body[data-theme="dark"] * {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border-color: #000000 !important;
+    box-shadow: none !important;
+  }
+
+  .app-header,
+  .board-header {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .nurse-slot__header {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #000000 !important;
   }
 
   /* Hide all app chrome and interactive UI */

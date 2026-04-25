@@ -39,6 +39,7 @@
   let activeModalRoom = null;
   const STORAGE_KEY = "chargedeck_board_state";
   const OUTGOING_STORAGE_KEY = "chargedeck_outgoing_assignment";
+  const THEME_KEY = "chargedeck_theme";
   let isRestoringBoardState = false;
   /** When true, Continue/Skip on outgoing returns to the existing board DOM (no showBoard). */
   let resumeExistingBoardAfterOutgoing = false;
@@ -47,6 +48,99 @@
     const board = document.getElementById("board-container");
     if (!board || board.style.display === "none") return null;
     return board;
+  }
+
+  function isNightShiftSelected() {
+    const night = document.getElementById("shift-night");
+    return Boolean(night && night.checked);
+  }
+
+  function getThemeStorageValue() {
+    try {
+      return localStorage.getItem(THEME_KEY);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function getResolvedThemeIsDark() {
+    const mode = getThemeStorageValue();
+    if (mode === "light") {
+      return false;
+    }
+    if (mode === "dark") {
+      return true;
+    }
+    return isNightShiftSelected();
+  }
+
+  function syncBoardThemeToggleButton() {
+    const isDark = getResolvedThemeIsDark();
+    const icon = isDark ? "☀️" : "🌙";
+    const label = isDark ? "Switch to light mode" : "Switch to dark mode";
+    const boardBtn = document.getElementById("board-theme-toggle");
+    if (boardBtn) {
+      boardBtn.textContent = icon;
+      boardBtn.setAttribute("aria-label", label);
+    }
+    const outgoingThemeBtn = document.getElementById("outgoing-theme-toggle");
+    if (outgoingThemeBtn) {
+      outgoingThemeBtn.textContent = icon;
+      outgoingThemeBtn.setAttribute("aria-label", label);
+    }
+  }
+
+  function ensureOutgoingScreenThemeToggle() {
+    const row = document.querySelector(
+      "#outgoing-screen .outgoing-screen__header-row",
+    );
+    const back = document.getElementById("outgoing-back-setup");
+    if (!row || !back) {
+      return;
+    }
+    if (!document.getElementById("outgoing-theme-toggle")) {
+      const wrap = document.createElement("div");
+      wrap.style.cssText =
+        "display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;";
+      const themeBtn = document.createElement("button");
+      themeBtn.type = "button";
+      themeBtn.id = "outgoing-theme-toggle";
+      themeBtn.className = "board-header__theme";
+      themeBtn.setAttribute("aria-label", "Switch theme");
+      row.insertBefore(wrap, back);
+      wrap.appendChild(themeBtn);
+      wrap.appendChild(back);
+      themeBtn.addEventListener("click", onBoardThemeToggleClick);
+    }
+    syncBoardThemeToggleButton();
+  }
+
+  function applyBodyTheme() {
+    if (getResolvedThemeIsDark()) {
+      document.body.setAttribute("data-theme", "dark");
+    } else {
+      document.body.removeAttribute("data-theme");
+    }
+    syncBoardThemeToggleButton();
+  }
+
+  function onShiftTypeThemeChange() {
+    try {
+      localStorage.setItem(THEME_KEY, "auto");
+    } catch (e) {
+      /* ignore */
+    }
+    applyBodyTheme();
+  }
+
+  function onBoardThemeToggleClick() {
+    const nextDark = !getResolvedThemeIsDark();
+    try {
+      localStorage.setItem(THEME_KEY, nextDark ? "dark" : "light");
+    } catch (e) {
+      /* ignore */
+    }
+    applyBodyTheme();
   }
 
   function saveOutgoingStandaloneToLocalStorage(draft, params) {
@@ -1081,6 +1175,8 @@
       outgoingScreen.setAttribute("aria-hidden", "false");
     }
 
+    ensureOutgoingScreenThemeToggle();
+
     removeOutgoingPreloadBanner();
 
     if (options.fromBoard && pendingBoardParams) {
@@ -1218,6 +1314,14 @@
             <span class="board-header__meta">${nurseLabel}</span>
           </div>
           <div class="board-header__actions">
+            <button
+              type="button"
+              id="board-theme-toggle"
+              class="board-header__theme"
+              aria-label="Switch theme"
+            >
+              🌙
+            </button>
             <button
               type="button"
               id="print-assignment"
@@ -1396,6 +1500,12 @@
     if (backOutgoingBtn) {
       backOutgoingBtn.addEventListener("click", onBackToOutgoingFromBoard);
     }
+
+    const themeToggleBtn = document.getElementById("board-theme-toggle");
+    if (themeToggleBtn) {
+      themeToggleBtn.addEventListener("click", onBoardThemeToggleClick);
+    }
+    syncBoardThemeToggleButton();
 
     if (options.restoreState) {
       applyRestoredState(options.restoreState);
@@ -2733,6 +2843,17 @@
   }
 
   function init() {
+    applyBodyTheme();
+
+    const shiftDay = document.getElementById("shift-day");
+    const shiftNight = document.getElementById("shift-night");
+    if (shiftDay) {
+      shiftDay.addEventListener("change", onShiftTypeThemeChange);
+    }
+    if (shiftNight) {
+      shiftNight.addEventListener("change", onShiftTypeThemeChange);
+    }
+
     const btn = document.getElementById("generate-board");
     if (btn) {
       btn.addEventListener("click", onGenerateClick);
