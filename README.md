@@ -18,7 +18,8 @@ An interactive drag-and-drop assignment board that flags rule
 violations in real time as assignments are built on both 
 desktop and mobile. Features smart auto-assignment with 
 geographic clustering, report continuity optimization, and 
-returning nurse continuity.
+returning nurse continuity. Saves automatically so no work 
+is ever lost.
 
 ## User Flow
 1. **Setup Screen** — Select shift type, number of nurses, occupied rooms
@@ -26,12 +27,15 @@ returning nurse continuity.
    final assignments to improve report continuity
 3. **Assignment Board** — Drag and drop, flag patients, auto-assign, 
    review and print
+4. **Restore Session** — On reload, restore your last saved board 
+   instantly or start fresh
 
 ## Features
 - Day / Night shift mode with shift-aware clinical rules
 - Room selection grid for all 29 occupied beds
 - Drag and drop patient cards into nurse slots (desktop + mobile)
 - Long press any patient card to add clinical flags
+- Hover over any card to see active flags at a glance
 - Real-time violation warnings and advisories on nurse slots
 - Editable nurse names on the board
 - Returning nurse toggle with room continuity
@@ -39,6 +43,11 @@ returning nurse continuity.
 - Auto-assign with geographic clustering, report continuity 
   and fairness balancing
 - Clear Assignment to reset and start over
+- Reset Flags — clear all flags globally or per patient
+- Color-coded flag legend — collapsible horizontal drawer
+- localStorage auto-save — board survives refresh or accidental close
+- Restore Session banner on reload
+- Back to Outgoing button — edit previous shift data without losing board
 - Print assignment sheet as a clean one-page table
 
 ## Clinical Rules Engine
@@ -91,6 +100,8 @@ HTML · CSS · Vanilla JavaScript · GitHub Pages
 - v2.0 — Auto-assign, returning nurses, geography clustering, new flags
 - v2.1 — High acuity rules, numerical sorting, Other comment tooltip
 - v3.0 — Outgoing shift screen, report continuity clustering
+- v3.1 — localStorage save/restore, legend, hover tooltips, 
+          flag reset, Back to Outgoing navigation
 
 ## Author
 Samuel Onewo, RN BSN, MSDS
