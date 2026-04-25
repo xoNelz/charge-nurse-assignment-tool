@@ -1433,6 +1433,16 @@ body[data-theme="dark"] .drop-zone--active {
     display: none !important;
   }
 
+  .board-assignment-actions,
+  .board-legend,
+  .board-body__top-bar,
+  #auto-assign-button,
+  #clear-assignment-button,
+  #reset-flags-button,
+  #board-theme-toggle {
+    display: none !important;
+  }
+
   /* Focus on the assignment list only */
   .assignment-board {
     max-width: 100%;
