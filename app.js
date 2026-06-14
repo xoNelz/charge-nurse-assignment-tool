@@ -40,6 +40,34 @@
   const STORAGE_KEY = "chargedeck_board_state";
   const OUTGOING_STORAGE_KEY = "chargedeck_outgoing_assignment";
   const THEME_KEY = "chargedeck_theme";
+  const NURSE_ROSTER_KEY = "chargedeck_nurse_roster";
+
+  function loadNurseRoster() {
+    try {
+      const raw = localStorage.getItem(NURSE_ROSTER_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((item) => typeof item === "string");
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveNameToRoster(name) {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const roster = loadNurseRoster();
+    const lower = trimmed.toLowerCase();
+    if (roster.some((n) => n.toLowerCase() === lower)) return;
+    roster.push(trimmed);
+    try {
+      localStorage.setItem(NURSE_ROSTER_KEY, JSON.stringify(roster));
+    } catch (e) {
+      // ignore storage errors
+    }
+  }
+
   let isRestoringBoardState = false;
   /** When true, Continue/Skip on outgoing returns to the existing board DOM (no showBoard). */
   let resumeExistingBoardAfterOutgoing = false;
@@ -1138,6 +1166,22 @@
       `;
       tbody.appendChild(tr);
     }
+
+    let datalist = document.getElementById("chargedeck-nurse-roster-outgoing");
+    if (!datalist) {
+      datalist = document.createElement("datalist");
+      datalist.id = "chargedeck-nurse-roster-outgoing";
+      document.body.appendChild(datalist);
+    }
+    datalist.innerHTML = "";
+    loadNurseRoster().forEach((rosterName) => {
+      const opt = document.createElement("option");
+      opt.value = rosterName;
+      datalist.appendChild(opt);
+    });
+    tbody.querySelectorAll(".outgoing-table__name").forEach((nameInput) => {
+      nameInput.setAttribute("list", "chargedeck-nurse-roster-outgoing");
+    });
   }
 
   function collectOutgoingAssignmentFromTable() {
@@ -1151,6 +1195,7 @@
       const nameInput = row.querySelector(".outgoing-table__name");
       const roomsInput = row.querySelector(".outgoing-table__rooms");
       const name = nameInput ? nameInput.value.trim() : "";
+      saveNameToRoster(name);
       const roomsStr = roomsInput ? roomsInput.value : "";
       result.push({
         name,
@@ -1927,6 +1972,16 @@
     input.style.color = "inherit";
     input.style.font = "inherit";
 
+    const datalist = document.createElement("datalist");
+    datalist.id = "chargedeck-nurse-roster-list";
+    loadNurseRoster().forEach((rosterName) => {
+      const opt = document.createElement("option");
+      opt.value = rosterName;
+      datalist.appendChild(opt);
+    });
+    document.body.appendChild(datalist);
+    input.setAttribute("list", "chargedeck-nurse-roster-list");
+
     let finished = false;
 
     const finish = () => {
@@ -1935,8 +1990,11 @@
       const newName = input.value.trim() || currentName.trim();
       titleEl.textContent = newName;
       titleEl.style.display = "";
-      input.remove();
+      saveNameToRoster(newName);
       saveBoardStateToLocalStorage();
+      const rosterList = document.getElementById("chargedeck-nurse-roster-list");
+      if (rosterList) rosterList.remove();
+      input.remove();
     };
 
     input.addEventListener("keydown", (e) => {
