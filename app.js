@@ -8,12 +8,15 @@
     { id: "heparinDrip", label: "Heparin Drip", colorClass: "patient-flag-dot--heparin" },
     { id: "transfusionRisk", label: "Transfusion Risk", colorClass: "patient-flag-dot--transfusion" },
     { id: "isolation", label: "Isolation", colorClass: "patient-flag-dot--isolation" },
-    { id: "goingToOr", label: "Going to OR", colorClass: "patient-flag-dot--or" },
+    { id: "goingToOr", label: "Going to OR/IR", colorClass: "patient-flag-dot--or" },
     { id: "expectedDischarge", label: "Expected Discharge", colorClass: "patient-flag-dot--discharge" },
     { id: "highAcuity", label: "High Acuity", colorClass: "patient-flag-dot--acuity" },
     { id: "lines", label: "Lines (PICC / Central)", colorClass: "patient-flag-dot--lines" },
     { id: "drains", label: "Drains (JP / IR)", colorClass: "patient-flag-dot--drains" },
-    { id: "woundCare", label: "Wound Care", colorClass: "patient-flag-dot--wound" },
+    { id: "woundCare", label: "Extensive Wound Care", colorClass: "patient-flag-dot--wound" },
+    { id: "chestTube", label: "Chest Tube", colorClass: "patient-flag-dot--lines" },
+    { id: "completeCare", label: "Complete Care", colorClass: "patient-flag-dot--acuity" },
+    { id: "demanding", label: "Demanding", colorClass: "patient-flag-dot--aggressive" },
     { id: "trach", label: "Trach", colorClass: "patient-flag-dot--trach" },
     { id: "aggressivePatient", label: "Aggressive Patient", colorClass: "patient-flag-dot--aggressive" },
     { id: "oneToOne", label: "1:1 (Safety / Suicide Precaution)", colorClass: "patient-flag-dot--or" },
@@ -1468,6 +1471,10 @@
                     <span class="board-legend__row-label">Aggressive Patient</span>
                   </div>
                   <div class="board-legend__row">
+                    <span class="patient-flag-dot patient-flag-dot--aggressive" aria-hidden="true"></span>
+                    <span class="board-legend__row-label">Demanding</span>
+                  </div>
+                  <div class="board-legend__row">
                     <span class="patient-flag-dot board-legend__dot--purple" aria-hidden="true"></span>
                     <span class="board-legend__row-label">1:1 (Safety / Suicide Precaution)</span>
                   </div>
@@ -1480,7 +1487,7 @@
                   <div class="board-legend__cat">Procedures &amp; Discharge:</div>
                   <div class="board-legend__row">
                     <span class="patient-flag-dot patient-flag-dot--or" aria-hidden="true"></span>
-                    <span class="board-legend__row-label">Going to OR</span>
+                    <span class="board-legend__row-label">Going to OR/IR</span>
                   </div>
                   <div class="board-legend__row">
                     <span class="patient-flag-dot patient-flag-dot--discharge" aria-hidden="true"></span>
@@ -1506,8 +1513,16 @@
                     <span class="board-legend__row-label">Drains (JP / IR)</span>
                   </div>
                   <div class="board-legend__row">
+                    <span class="patient-flag-dot patient-flag-dot--lines" aria-hidden="true"></span>
+                    <span class="board-legend__row-label">Chest Tube</span>
+                  </div>
+                  <div class="board-legend__row">
                     <span class="patient-flag-dot patient-flag-dot--wound" aria-hidden="true"></span>
-                    <span class="board-legend__row-label">Wound Care</span>
+                    <span class="board-legend__row-label">Extensive Wound Care</span>
+                  </div>
+                  <div class="board-legend__row">
+                    <span class="patient-flag-dot patient-flag-dot--acuity" aria-hidden="true"></span>
+                    <span class="board-legend__row-label">Complete Care</span>
                   </div>
                 </div>
                 <div class="board-legend__group">
@@ -1717,6 +1732,7 @@
       let woundCount = 0;
       let isolationCount = 0;
       let aggressivePatientCount = 0;
+      let completeCareCount = 0;
       let highAcuityCount = 0;
 
       const podsAssigned = new Set();
@@ -1745,6 +1761,7 @@
         if (flags.woundCare) woundCount += 1;
         if (flags.isolation) isolationCount += 1;
         if (flags.aggressivePatient) aggressivePatientCount += 1;
+        if (flags.completeCare) completeCareCount += 1;
       });
 
       const violations = [];
@@ -1819,6 +1836,14 @@
         advisories.push(
           "Multiple aggressive patients assigned - review workload",
         );
+      }
+
+      if (completeCareCount >= 2) {
+        advisories.push("2+ Complete Care patients - review workload");
+      }
+
+      if (woundCount >= 2) {
+        advisories.push("2+ Extensive Wound Care patients - review workload");
       }
 
       // Geographic spread advisory: 3+ pods forming 2+ disconnected clusters

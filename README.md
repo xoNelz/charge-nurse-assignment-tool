@@ -77,9 +77,10 @@ The app enforces these assignment safety rules in real time:
 
 ## Patient Flags
 Each patient can be flagged for:
-Heparin Drip · Transfusion Risk · Isolation · Going to OR · 
+Heparin Drip · Transfusion Risk · Isolation · Going to OR/IR · 
 Expected Discharge · High Acuity · Lines (PICC/Central) · 
-Drains (JP/IR) · Wound Care · Trach · Aggressive Patient · 
+Drains (JP/IR) · Extensive Wound Care · Chest Tube · Complete Care · 
+Demanding · Trach · Aggressive Patient · 
 1:1 (Safety / Suicide Precaution) · Police/Prison Custody · 
 Other (with comment)
 
