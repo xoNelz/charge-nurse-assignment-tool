@@ -99,13 +99,18 @@
     if (mode === "dark") {
       return true;
     }
-    return isNightShiftSelected();
+    return false;
   }
 
   function syncBoardThemeToggleButton() {
     const isDark = getResolvedThemeIsDark();
     const icon = isDark ? "☀️" : "🌙";
     const label = isDark ? "Switch to light mode" : "Switch to dark mode";
+    const setupBtn = document.getElementById("setup-theme-toggle");
+    if (setupBtn) {
+      setupBtn.textContent = icon;
+      setupBtn.setAttribute("aria-label", label);
+    }
     const boardBtn = document.getElementById("board-theme-toggle");
     if (boardBtn) {
       boardBtn.textContent = icon;
@@ -152,14 +157,7 @@
     syncBoardThemeToggleButton();
   }
 
-  function onShiftTypeThemeChange() {
-    try {
-      localStorage.setItem(THEME_KEY, "auto");
-    } catch (e) {
-      /* ignore */
-    }
-    applyBodyTheme();
-  }
+  function onShiftTypeThemeChange() {}
 
   function onBoardThemeToggleClick() {
     const nextDark = !getResolvedThemeIsDark();
@@ -2902,6 +2900,12 @@
 
   function init() {
     applyBodyTheme();
+
+    const setupThemeToggle = document.getElementById("setup-theme-toggle");
+    if (setupThemeToggle) {
+      setupThemeToggle.addEventListener("click", onBoardThemeToggleClick);
+    }
+    syncBoardThemeToggleButton();
 
     const shiftDay = document.getElementById("shift-day");
     const shiftNight = document.getElementById("shift-night");
